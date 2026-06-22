@@ -1,0 +1,87 @@
+{
+  "theme": "dark",
+  "archetype": "5 (Luxury / Moody Premium Tech)",
+  "rationale": "A multi-domain RAG AI assistant requires a focused, premium, and authoritative environment. The deep navy background provides a sleek 'command center' feel, while the neon accents (Indigo, Emerald, Amber) dynamically shift the UI's mood based on the domain. Glassmorphism elevates the interface from basic SaaS to a high-end AI tool.",
+  "colors": {
+    "background": "#0A0F1E",
+    "surface": "rgba(255, 255, 255, 0.03)",
+    "surfaceHover": "rgba(255, 255, 255, 0.06)",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "muted": "#64748B",
+      "inverse": "#0A0F1E"
+    },
+    "accents": {
+      "auto": "#8B5CF6",
+      "finance": "#6366F1",
+      "health": "#10B981",
+      "education": "#F59E0B"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "'JetBrains Mono', monospace"
+    },
+    "rules": {
+      "h1": "text-4xl sm:text-5xl font-light tracking-tighter text-white",
+      "h2": "text-2xl sm:text-3xl font-medium tracking-tight text-white",
+      "h3": "text-xl font-medium tracking-tight text-white",
+      "body": "text-base leading-relaxed text-slate-300",
+      "code": "font-mono text-sm tracking-tight text-slate-300 bg-black/50 p-4 rounded-lg border border-white/5",
+      "label": "text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+    }
+  },
+  "layout": {
+    "spacing": "Generous padding: use p-6 or p-8 for cards. Deep gaps (gap-8, gap-12) between major sections.",
+    "radius": "rounded-2xl for major containers, rounded-xl for inner elements.",
+    "alignment": "Optical alignment with strong left-aligned text for readability in chat.",
+    "chat_structure": "Full-width message rows with subtle background separation instead of playful chat bubbles. User messages: transparent bg. AI messages: subtle bg-white/5. Strong contrast for streamed text."
+  },
+  "surfaces_and_effects": {
+    "glassmorphism": "bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)]",
+    "signature_element": "The accent color of the active vertical MUST bleed into the chat input border, source cards, and active tab pills via subtle box-shadows or gradients.",
+    "hover_states": "Interactive elements lift (-translate-y-1) with increased backdrop saturation and brighter border."
+  },
+  "components": {
+    "tabs": "Pill-shaped tabs (Auto | Finance | Health | Education). Active state has glassmorphism bg + bottom 2px border of the vertical's accent color.",
+    "chat_input": "Glassmorphism input field at the bottom. The border glows subtly with the active vertical's accent color on focus. Use Lucide icons for submit.",
+    "source_cards": "Collapsible citation cards. Header shows similarity score and chunk title. Border-left uses active vertical accent color. Content is in JetBrains Mono.",
+    "document_upload": "Dashed border dropzone (border-white/20). On drag over, border turns to the selected vertical's accent color. Internal tags for Finance, Health, Education.",
+    "buttons": "Primary buttons use the active vertical's accent color with white text. Secondary buttons use glassmorphism.",
+    "sidebar": "Darker than main bg (e.g., bg-black/20) with a 1px right border (border-white/5). Lists past conversations."
+  },
+  "motion_and_interactions": {
+    "chat_streaming": "Cursor blinking effect at the end of streaming text.",
+    "transitions": "transition-all duration-300 ease-out for color shifts when changing verticals.",
+    "loading": "A pulse or glowing ring using the active vertical's accent color (The 'Thinking/Loading' indicator)."
+  },
+  "assets": {
+    "icons": "lucide-react (Standard UI), @phosphor-icons/react (for premium dashboard feel).",
+    "images": {
+      "hero_background": {
+        "url": "https://images.unsplash.com/photo-1579548122080-c35fd6820ecb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGRhcmslMjBuYXZ5JTIwdGVjaCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzgyMTYwMDgyfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract dark navy tech background with smooth waves for landing page."
+      },
+      "empty_state_owl": {
+        "url": "🦉",
+        "description": "Use the owl emoji or a Phosphor icon (Owl) for the Athena empty state logo as requested."
+      }
+    }
+  },
+  "testing": {
+    "attributes": "All interactive elements MUST include data-testid attributes (e.g., data-testid='chat-input', data-testid='vertical-tab-finance', data-testid='upload-dropzone')."
+  },
+  "instructions_to_main_agent": [
+    "Build a Next.js / React layout with a Sidebar on the left and Main Chat/Upload area on the right.",
+    "Implement a global state or Context for the 'active vertical' (auto, finance, health, education) so the UI color can dynamically shift.",
+    "Use pure HTML/Tailwind for the dynamic chat structure and layout. Use Shadcn components for complex interactions like Tabs, Dialogs (upload modal), and Dropdowns.",
+    "The empty state should prominently feature 'Ask Athena anything — Finance · Health · Education — auto-routed or pick a domain above' with the Athena Owl motif.",
+    "Ensure the Chat Input border and Source Cards dynamically apply the active vertical's color (e.g., border-[#6366F1] for Finance).",
+    "Implement Document Upload drag-and-drop zone with vertical tagging.",
+    "Include JWT auth mock screens (Login/Signup) using glassmorphism cards centered on the dark navy background."
+  ]
+}
