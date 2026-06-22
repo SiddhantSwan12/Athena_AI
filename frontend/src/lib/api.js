@@ -1,10 +1,6 @@
 import axios from "axios";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
-if (!BASE) {
-  // eslint-disable-next-line no-console
-  console.error("REACT_APP_BACKEND_URL is not set");
-}
 
 const api = axios.create({
   baseURL: BASE,

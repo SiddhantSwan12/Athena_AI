@@ -95,8 +95,8 @@ export default function Sidebar({ onNewChat, currentConversationId, onSelectConv
       </div>
 
       <div className="border-t border-white/[0.06] px-3 py-3" data-testid="sidebar-user">
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-athena/40 to-finance/30 flex items-center justify-center text-sm font-semibold text-white">
+        <div className="flex items-center gap-3 px-2 py-1.5">
+          <div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-athena/40 to-finance/30 flex items-center justify-center text-sm font-semibold text-white">
             {user?.name?.[0]?.toUpperCase() || "?"}
           </div>
           <div className="flex-1 min-w-0">
