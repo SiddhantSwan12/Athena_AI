@@ -44,6 +44,19 @@ React (3000) ──HTTPS──▶ FastAPI (8001) ──▶ MongoDB
 - ✅ Tested: backend 25/25 pytest pass; frontend full E2E flows pass (Iteration 1, see `/app/test_reports/iteration_1.json`).
 - ✅ Demo user `demo@athena.ai / demo1234` available.
 
+## Premium frontend redesign (2026-01-22) — COMPLETE
+- ✅ Linear-meets-Perplexity aesthetic. Replaced Outfit/Inter with **Syne (display)** + Inter (UI) + JetBrains Mono (citations).
+- ✅ New token system: `void/deep/surface/border/muted/primary/secondary/tertiary` + per-vertical `finance/health/education` (DEFAULT/dim/glow).
+- ✅ GSAP-driven Hero with single ambient orb + grid mask (no particles).
+- ✅ FeatureGrid with 3D-tilt cards via framer-motion springs.
+- ✅ VerticalSwitcher uses framer-motion `layoutId` for animated pill swap.
+- ✅ TopBar (Athena brand + live-pulse dot + nav + switcher + user) replaces old multi-section sidebar.
+- ✅ ConversationsRail: collapsible (framer-motion width spring) sidebar restricted to conversation list.
+- ✅ MessageBubble stores **per-message vertical accent** — auto-routed answers keep their domain color even after the user toggles the picker.
+- ✅ SourceDrawer: collapsible chunk cards with `chunk_N · title · NN% match` in mono.
+- ✅ Tested: backend 25/25 still passing, frontend ~95% (1 DOM-nesting warning fixed in iter-2 follow-up).
+
+
 ## Prioritized backlog
 **P1 (next session)**
 - Streaming chat responses (Server-Sent Events) for instant feedback.

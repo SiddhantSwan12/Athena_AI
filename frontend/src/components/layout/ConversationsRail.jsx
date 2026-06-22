@@ -93,11 +93,19 @@ export default function ConversationsRail({
                 const isActive = currentId === c.id;
                 const a = ACCENT_MAP[c.vertical]?.accent || "#6366F1";
                 return (
-                  <button
+                  <div
                     key={c.id}
                     data-testid={`conversation-item-${c.id}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelect?.(c.id)}
-                    className={`w-full text-left px-2.5 py-2 rounded-lg group transition-all relative mb-0.5 ${
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelect?.(c.id);
+                      }
+                    }}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg group transition-all relative mb-0.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-muted ${
                       isActive ? "bg-surface" : "hover:bg-surface/60"
                     }`}
                   >
@@ -122,7 +130,7 @@ export default function ConversationsRail({
                     <p className="ml-3 mt-0.5 text-[10px] font-mono text-tertiary">
                       {labelFor(c.vertical).toLowerCase()}
                     </p>
-                  </button>
+                  </div>
                 );
               })
             )}
