@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 2 (post-redesign) test pass. Backend pytest: 25/25 passed unchanged (~35s). Frontend redesign verified end-to-end against the production preview URL: landing (Syne typography + 'Intelligence on demand.' gradient + 3 landing-vertical cards + CTAs route correctly), login (demo@athena.ai / demo1234 → /chat), chat round-trip (Auto + Finance/Health/Education tabs, suggestion-* cards populate input + set vertical, chat-send-btn → ThinkingDots → assistant message), SourceDrawer (source-toggle expands; source-card-N shows 'chunk_N · <title> NN% match'), ConversationsRail (rail-toggle collapse/expand smooth, conversation-item-* hydrates an existing convo, new-chat-btn resets to empty-state, conversation-delete-* works), TopBar (nav-chat / nav-library / nav-upload all navigate, topbar-clear-btn appears only with messages, logout-btn → /login), Upload page (upload-dropzone present, minimal layout loads), Library page (loads without error). 1 real React warning found: validateDOMNesting — <button> conversation-delete-* nested inside <button> conversation-item-* in ConversationsRail.jsx (lines 96-125). Pre-existing React Router future-flag warnings remain (cosmetic).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ingest/text & /api/ingest/file", "issue": "Response shape is {document_id, chunks_inserted} but GET /api/ingest/documents returns {id, chunks_count}. Naming inconsistency carried over from iteration 1 — no regression, just inconsistent."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ConversationsRail", "issue": "Invalid HTML: conversation-delete-* <button> is rendered as a descendant of the conversation-item-* <button>, producing a React validateDOMNesting warning on every chat page load. Browsers may also break event propagation or accessibility (nested interactive elements). Refactor: change the outer wrapper to <div role=\"button\" tabIndex={0}> with onKeyDown, or pull the delete button out of the row and position it absolutely as a sibling.", "selector": "[data-testid^=\"conversation-item-\"] [data-testid^=\"conversation-delete-\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Console (all pages)", "issues": ["React Router v6 future-flag warnings (v7_startTransition, v7_relativeSplatPath) still emitted — cosmetic; silence by passing future={{ v7_startTransition: true, v7_relativeSplatPath: true }} to <BrowserRouter>."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_athena_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix nested-button DOM warning in /app/frontend/src/components/layout/ConversationsRail.jsx (lines 96-125). Replace the outer <button data-testid=conversation-item-...> with a clickable <div role=\"button\" tabIndex={0} onKeyDown=...>, keeping the inner conversation-delete-* button intact. This is the only React error in the console after the redesign.",
+    "(Optional / carry-over) Unify ingest response naming and silence React Router future flag warnings."
+  ],
+  "critical_code_review_comments": [
+    "Redesign keeps file sizes well under 700 lines; no DRY hotspots noticed.",
+    "framer-motion layoutId pill on VerticalSwitcher works as designed — switching tabs animates without jank.",
+    "MessageBubble correctly stores per-message vertical (verified: an Auto-tab education query produced an assistant message wrapped with education accent independent of the still-active 'Auto' picker state).",
+    "SourceDrawer renders {chunk_N · <title>} label and {NN% match} in mono — matches spec.",
+    "Nested-button anti-pattern in ConversationsRail is the only React-level bug; everything else (GSAP hero anim, 3D tilt cards, rail width animation, sonner toasts on upload page) runs without warnings.",
+    "API contract is identical to iteration 1 — backend tests reaffirm 25/25 with no regression."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (25/25)",
+    "frontend": "~95% — every flow exercised works; 1 React DOM-nesting warning to fix (non-blocking but should be cleaned up before ship)."
+  },
+  "test_credentials": "Demo user demo@athena.ai / demo1234 verified working.",
+  "seed_data_creation": "Backend tests sign up fresh users prefixed test-<epoch>-<rand>@athena.ai and create/delete TEST_Doc_Text and TEST_Newton ingestion docs each run. No frontend-side seed needed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend suite at /app/backend/tests/test_athena_backend.py — still 25/25 in ~35s. Source card testid is source-card-N (NOT source-chunk-N). ConversationsRail emits a single DOM-nesting React warning that the main agent should fix by refactoring the outer conversation-item wrapper from <button> to a div with role=button. Library page may show 0 items for the demo user because seeded KB belongs to the seed user; ingest a doc as the test user first if you need to verify the per-vertical grouping UI.",
+  "rca of the issue": "ConversationsRail.jsx renders each row as <button data-testid='conversation-item-${id}'> containing a child <button data-testid='conversation-delete-${id}'>. HTML spec forbids interactive descendants inside <button>, so React logs validateDOMNesting and the inner delete still works only because the outer onClick uses event-stopPropagation in handleDelete. Reproduction: log in, open /chat, open DevTools console — warning appears immediately on every render of the conversation list. Mitigation: change the outer element to <div role='button' tabIndex={0} onClick={...} onKeyDown={(e)=>e.key==='Enter'&&onSelect(c.id)} ...> while keeping the inner <button data-testid='conversation-delete-${id}'> intact. No test changes needed."
+}

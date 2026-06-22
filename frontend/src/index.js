@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 
 import App from "./App";
 import { AuthProvider } from "./hooks/useAuth";
+import { VerticalProvider } from "./lib/VerticalContext";
 import "./index.css";
 
 const root = createRoot(document.getElementById("root"));
@@ -12,20 +13,22 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
-        <Toaster
-          position="top-right"
-          theme="dark"
-          richColors
-          toastOptions={{
-            style: {
-              background: "rgba(15, 23, 42, 0.95)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#fff",
-              backdropFilter: "blur(20px)",
-            },
-          }}
-        />
+        <VerticalProvider>
+          <App />
+          <Toaster
+            position="top-right"
+            theme="dark"
+            toastOptions={{
+              style: {
+                background: "#111827",
+                border: "1px solid #1F2937",
+                color: "#F9FAFB",
+                fontSize: "13px",
+                fontFamily: "Inter, sans-serif",
+              },
+            }}
+          />
+        </VerticalProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

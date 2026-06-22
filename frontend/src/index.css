@@ -4,100 +4,62 @@
 
 :root {
   color-scheme: dark;
+  --font-syne: "Syne", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
-html, body, #root {
-  height: 100%;
-}
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background-color: #0A0F1E;
-  color: #F8FAFC;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-feature-settings: "cv11", "ss01", "ss03";
+  background-color: #05070F;
+  color: #F9FAFB;
+  font-family: var(--font-inter), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Custom selection */
-::selection {
-  background: rgba(139, 92, 246, 0.35);
-  color: #fff;
-}
+html { scroll-behavior: smooth; }
 
 /* Scrollbar — slim, dark */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #374151; }
 
-/* Background — deep navy with very subtle radial glow */
-.athena-bg {
-  background-color: #0A0F1E;
+/* Selection */
+::selection { background: #6366F130; color: #F9FAFB; }
+
+/* Subtle grid background utility for landing */
+.grid-bg {
   background-image:
-    radial-gradient(1200px 600px at 80% -10%, rgba(99,102,241,0.10), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(16,185,129,0.06), transparent 60%),
-    radial-gradient(800px 600px at 50% 50%, rgba(245,158,11,0.04), transparent 70%);
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: -1px -1px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
 }
 
-/* Glassmorphism utility */
-.glass {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-}
+/* Vertical accent CSS variables (driven by VerticalProvider) */
+[data-vertical="finance"]   { --accent: #6366F1; --accent-dim: #6366F120; --accent-glow: #6366F140; }
+[data-vertical="health"]    { --accent: #10B981; --accent-dim: #10B98120; --accent-glow: #10B98140; }
+[data-vertical="education"] { --accent: #F59E0B; --accent-dim: #F59E0B20; --accent-glow: #F59E0B40; }
+[data-vertical="auto"]      { --accent: #6366F1; --accent-dim: #6366F120; --accent-glow: #6366F140; }
 
-.glass-strong {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-}
-
-/* Noise grain overlay */
-.grain::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.04;
-  z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* Vertical accent variables */
-.accent-auto      { --accent: #8B5CF6; --accent-dim: rgba(139,92,246,0.18); }
-.accent-finance   { --accent: #6366F1; --accent-dim: rgba(99,102,241,0.20); }
-.accent-health    { --accent: #10B981; --accent-dim: rgba(16,185,129,0.18); }
-.accent-education { --accent: #F59E0B; --accent-dim: rgba(245,158,11,0.18); }
-
-.border-accent { border-color: var(--accent) !important; }
-.text-accent { color: var(--accent); }
-.bg-accent { background-color: var(--accent); }
-.shadow-accent { box-shadow: 0 0 0 1px var(--accent), 0 0 32px var(--accent-dim); }
-.ring-accent { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-dim); }
-
-/* Animated thinking dot */
-.dot { width: 6px; height: 6px; border-radius: 999px; background: var(--accent, #8B5CF6); }
-
-/* Markdown styling */
-.prose-athena {
-  color: #E2E8F0;
-  line-height: 1.7;
-  font-size: 0.95rem;
-}
-.prose-athena p { margin: 0.6rem 0; }
-.prose-athena strong { color: #fff; font-weight: 600; }
+/* Markdown prose for answers */
+.prose-athena { color: #E5E7EB; line-height: 1.65; font-size: 0.92rem; }
+.prose-athena p { margin: 0.55rem 0; }
+.prose-athena strong { color: #F9FAFB; font-weight: 600; }
 .prose-athena code {
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.45);
   border: 1px solid rgba(255,255,255,0.06);
-  padding: 0.1rem 0.35rem;
+  padding: 0.08rem 0.32rem;
   border-radius: 0.35rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
 }
 .prose-athena pre {
@@ -106,11 +68,27 @@ body {
   padding: 0.9rem;
   border-radius: 0.6rem;
   overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
 }
-.prose-athena ul, .prose-athena ol { padding-left: 1.4rem; margin: 0.6rem 0; }
-.prose-athena li { margin: 0.25rem 0; }
+.prose-athena ul, .prose-athena ol { padding-left: 1.4rem; margin: 0.55rem 0; }
+.prose-athena li { margin: 0.2rem 0; }
 .prose-athena a { color: #93C5FD; text-decoration: underline; text-underline-offset: 2px; }
-.prose-athena h1, .prose-athena h2, .prose-athena h3 { color: #fff; font-family: 'Outfit', sans-serif; font-weight: 600; margin-top: 1rem; }
-.prose-athena blockquote { border-left: 3px solid var(--accent, #8B5CF6); padding-left: 0.9rem; color: #CBD5E1; margin: 0.6rem 0; }
+.prose-athena h1, .prose-athena h2, .prose-athena h3 {
+  color: #F9FAFB;
+  font-family: var(--font-syne);
+  font-weight: 700;
+  margin: 0.9rem 0 0.5rem;
+}
+.prose-athena blockquote {
+  border-left: 2px solid var(--accent, #6366F1);
+  padding-left: 0.9rem;
+  color: #CBD5E1;
+  margin: 0.55rem 0;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
