@@ -1,109 +1,144 @@
-import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { gsap } from "gsap";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { gsap } from "gsap";
+import { Link } from "react-router-dom";
+
+import LiveDemo from "./LiveDemo";
 
 export default function Hero({ ctaLoggedIn }) {
-  const headingRef = useRef(null);
+  const headlineRef = useRef(null);
   const subRef = useRef(null);
-  const ctaRef = useRef(null);
-  const orbRef = useRef(null);
-  const tagRef = useRef(null);
+  const metaRef = useRef(null);
+  const [pageAccent, setPageAccent] = useState(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.fromTo(tagRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 })
-        .fromTo(headingRef.current, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, "-=0.35")
-        .fromTo(subRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, "-=0.5")
-        .fromTo(ctaRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, "-=0.4");
-
-      gsap.to(orbRef.current, {
-        y: -24,
-        duration: 4,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1,
-      });
+      tl.fromTo(metaRef.current, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55 })
+        .fromTo(
+          headlineRef.current?.querySelectorAll(".gsap-word") || [],
+          { y: 50, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.9, stagger: 0.06 },
+          "-=0.3"
+        )
+        .fromTo(subRef.current, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55 }, "-=0.55");
     });
     return () => ctx.revert();
   }, []);
 
+  const accentStyle = pageAccent ? { color: "var(--accent)" } : {};
+
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-6">
-      {/* Subtle grid backdrop (mask fades it toward edges) */}
-      <div className="absolute inset-0 grid-bg pointer-events-none" />
-
-      {/* Ambient orb — single deliberate light source */}
-      <div
-        ref={orbRef}
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] h-[680px] rounded-full pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse at center, #6366F114 0%, transparent 70%)",
-          filter: "blur(40px)",
-        }}
+    <section
+      data-testid="hero"
+      data-vertical={pageAccent || "auto"}
+      className="relative pt-12 pb-16 sm:pt-20 sm:pb-24"
+    >
+      {/* Soft accent halo, top-right, follows resolved vertical */}
+      <motion.div
+        aria-hidden
+        className="absolute top-0 right-[-10%] w-[700px] h-[700px] rounded-full pointer-events-none"
+        animate={{ background: pageAccent ? "radial-gradient(ellipse at center, var(--accent-dim) 0%, transparent 70%)" : "radial-gradient(ellipse at center, #6B5BFF12 0%, transparent 70%)" }}
+        transition={{ duration: 0.7 }}
+        style={{ filter: "blur(50px)" }}
       />
+      <div className="absolute inset-0 dot-grid pointer-events-none opacity-50" />
 
-      {/* Eyebrow tag */}
-      <div
-        ref={tagRef}
-        data-testid="landing-eyebrow"
-        className="relative z-10 mb-7 flex items-center gap-2 px-3 py-1.5 rounded-full border border-finance/30 bg-finance/[0.04] text-finance text-[11px] font-mono"
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-finance animate-pulse-slow" />
-        RAG · Multi-domain · Claude Sonnet 4.6
-      </div>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+        {/* LEFT — Editorial column */}
+        <div className="lg:col-span-6">
+          <div ref={metaRef} className="flex items-center gap-3 mb-7">
+            <span className="marker">№ 01</span>
+            <div className="h-px w-12 bg-border" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-quiet">an oracle for the curious</span>
+          </div>
 
-      {/* Main heading */}
-      <h1
-        ref={headingRef}
-        className="relative z-10 font-display font-bold text-center leading-[0.95] tracking-tight text-5xl sm:text-7xl lg:text-8xl text-primary max-w-4xl"
-      >
-        Intelligence
-        <br />
-        <span
-          className="text-transparent bg-clip-text"
-          style={{ backgroundImage: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A78BFA 100%)" }}
-        >
-          on demand.
-        </span>
-      </h1>
-
-      <p
-        ref={subRef}
-        className="relative z-10 mt-6 text-secondary text-base sm:text-lg text-center max-w-xl leading-relaxed"
-      >
-        Athena answers questions grounded in your documents — across Finance, Health,
-        and Education — with full source citations in under 300&nbsp;ms.
-      </p>
-
-      <div ref={ctaRef} className="relative z-10 mt-10 flex items-center gap-3 flex-wrap justify-center">
-        <Link
-          to={ctaLoggedIn ? "/chat" : "/signup"}
-          data-testid="landing-cta-primary"
-          className="group inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-finance hover:bg-[#5254CC] text-white font-medium text-sm transition-all duration-200 shadow-glow-finance hover:shadow-none"
-        >
-          {ctaLoggedIn ? "Continue chatting" : "Start asking"}
-          <motion.span
-            className="inline-block"
-            initial={{ x: 0 }}
-            whileHover={{ x: 4 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          <h1
+            ref={headlineRef}
+            className="font-display text-primary tracking-tight leading-[0.92]"
+            style={{ fontSize: "clamp(56px, 8vw, 112px)" }}
           >
-            →
-          </motion.span>
-        </Link>
-        <Link
-          to={ctaLoggedIn ? "/upload" : "/login"}
-          data-testid="landing-cta-secondary"
-          className="px-6 py-3 rounded-xl border border-border hover:border-muted text-secondary hover:text-primary text-sm transition-all duration-200"
-        >
-          Upload documents
-        </Link>
-      </div>
+            <span className="gsap-word inline-block">She</span>{" "}
+            <span className="gsap-word inline-block">reads</span>
+            <br />
+            <span className="gsap-word inline-block">your</span>{" "}
+            <em className="gsap-word italic font-medium inline-block" style={accentStyle}>library,</em>
+            <br />
+            <span className="gsap-word inline-block">and</span>{" "}
+            <span className="gsap-word inline-block">answers</span>
+            <br />
+            <em className="gsap-word italic font-medium inline-block">like a scholar.</em>
+          </h1>
 
-      {/* Bottom fade into page */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-void to-transparent pointer-events-none" />
+          <p
+            ref={subRef}
+            className="mt-8 max-w-md text-secondary text-[1.05rem] leading-[1.75]"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-quiet mr-2">Athena</span>
+            is a multi-domain oracle. Drop in your PDFs across
+            <em className="italic"> finance</em>,<em className="italic"> health</em>, and
+            <em className="italic"> education</em>, and ask anything — she routes,
+            retrieves, and cites her sources <strong className="text-primary font-medium">in under 300 ms</strong>.
+          </p>
+
+          <div className="mt-9 flex items-center gap-5 flex-wrap">
+            <Link
+              to={ctaLoggedIn ? "/chat" : "/signup"}
+              data-testid="landing-cta-primary"
+              className="group inline-flex items-center gap-2 font-display italic text-primary text-2xl tracking-tight border-b border-primary/30 pb-1 hover:border-primary transition-colors"
+            >
+              {ctaLoggedIn ? "Open the terminal" : "Consult the oracle"}
+              <motion.span
+                className="inline-block"
+                initial={{ x: 0 }}
+                whileHover={{ x: 6 }}
+                transition={{ type: "spring", stiffness: 380, damping: 22 }}
+              >
+                →
+              </motion.span>
+            </Link>
+            <Link
+              to={ctaLoggedIn ? "/upload" : "/login"}
+              data-testid="landing-cta-secondary"
+              className="font-mono text-[11px] uppercase tracking-[0.22em] text-tertiary hover:text-secondary transition-colors link-line"
+            >
+              {ctaLoggedIn ? "+ index a document" : "sign in"}
+            </Link>
+          </div>
+
+          {/* Vital stats — small editorial row */}
+          <dl className="mt-12 grid grid-cols-3 gap-x-3 max-w-md border-t border-border pt-5">
+            <div>
+              <dt className="marker">retrieval</dt>
+              <dd className="font-display italic text-primary text-xl tracking-tight tabular mt-1">
+                top-5 · 0.55τ
+              </dd>
+            </div>
+            <div>
+              <dt className="marker">embedding</dt>
+              <dd className="font-display italic text-primary text-xl tracking-tight tabular mt-1">3072 dim</dd>
+            </div>
+            <div>
+              <dt className="marker">latency</dt>
+              <dd className="font-display italic text-primary text-xl tracking-tight tabular mt-1">≈ 294 ms</dd>
+            </div>
+          </dl>
+        </div>
+
+        {/* RIGHT — Live demo terminal */}
+        <div className="lg:col-span-6 lg:pt-4">
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <LiveDemo onAccent={setPageAccent} />
+          </motion.div>
+          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-quiet text-center sm:text-left">
+            ↑ live demo · classification runs client-side, answers are seeded
+          </p>
+        </div>
+      </div>
     </section>
   );
 }

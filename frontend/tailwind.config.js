@@ -5,54 +5,59 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Base palette
-        void: "#05070F",
-        deep: "#0A0F1E",
-        surface: "#111827",
-        border: "#1F2937",
-        muted: "#374151",
+        // Paper-on-ink palette — warmer dark than pure blue-black
+        ink:     "#070608",   // page
+        paper:   "#0F0D10",   // slight warm offset
+        surface: "#161318",
+        border:  "#231F25",
+        muted:   "#2E2932",
 
-        // Text scale
-        primary: "#F9FAFB",
-        secondary: "#9CA3AF",
-        tertiary: "#4B5563",
+        primary:   "#F4EFE7",   // warm off-white "paper"
+        secondary: "#9C95A0",
+        tertiary:  "#5D5560",
+        quiet:     "#3A3640",
 
-        // Vertical accents
-        finance: { DEFAULT: "#6366F1", dim: "#6366F120", glow: "#6366F140" },
-        health: { DEFAULT: "#10B981", dim: "#10B98120", glow: "#10B98140" },
-        education: { DEFAULT: "#F59E0B", dim: "#F59E0B20", glow: "#F59E0B40" },
-        athena: "#8B5CF6",
+        // Per-domain hues — pulled toward editorial, not corporate
+        finance:   { DEFAULT: "#6B5BFF", dim: "#6B5BFF18", glow: "#6B5BFF40" }, // electric ink
+        health:    { DEFAULT: "#2BCD8A", dim: "#2BCD8A18", glow: "#2BCD8A40" }, // herbarium green
+        education: { DEFAULT: "#E5A14B", dim: "#E5A14B18", glow: "#E5A14B40" }, // foxed-paper amber
 
-        // Legacy aliases (kept so existing pages compile)
-        bg: "#0A0F1E",
+        // Legacy aliases for older files
+        void: "#070608",
+        deep: "#070608",
+        bg: "#070608",
       },
       fontFamily: {
-        display: ['Syne', 'sans-serif'],
-        sans: ['Inter', 'sans-serif'],
-        heading: ['Syne', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'monospace'],
+        display: ["Fraunces", "serif"],
+        sans:    ["'Inter Tight'", "Inter", "system-ui", "sans-serif"],
+        mono:    ['"JetBrains Mono"', "monospace"],
+        heading: ["Fraunces", "serif"], // legacy
       },
       animation: {
-        "fade-up": "fadeUp 0.5s ease forwards",
-        "fade-in": "fadeIn 0.3s ease forwards",
+        "fade-up":    "fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "fade-in":    "fadeIn 0.3s ease forwards",
         "pulse-slow": "pulseSlow 3s ease-in-out infinite",
-        "cursor-blink": "blink 1s step-end infinite",
-        "slide-up": "slideUp .5s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "thinking": "thinking 1.4s ease-in-out infinite",
+        "blink":      "blink 1.1s steps(1) infinite",
+        "marquee":    "marquee 50s linear infinite",
+        "scan":       "scan 8s linear infinite",
+        "slide-up":   "slideUp .5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "thinking":   "thinking 1.4s ease-in-out infinite",
       },
       keyframes: {
-        fadeUp: { "0%": { opacity: "0", transform: "translateY(16px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
-        fadeIn: { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
-        blink: { "0%, 100%": { opacity: "1" }, "50%": { opacity: "0" } },
-        pulseSlow: { "0%, 100%": { opacity: "1" }, "50%": { opacity: "0.5" } },
-        slideUp: { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
-        thinking: { "0%, 80%, 100%": { transform: "scale(0.7)", opacity: "0.4" }, "40%": { transform: "scale(1)", opacity: "1" } },
+        fadeUp:    { "0%": { opacity: "0", transform: "translateY(20px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
+        fadeIn:    { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
+        blink:     { "0%, 50%": { opacity: "1" }, "50.01%, 100%": { opacity: "0" } },
+        pulseSlow: { "0%, 100%": { opacity: "1" }, "50%": { opacity: "0.45" } },
+        marquee:   { from: { transform: "translateX(0)" }, to: { transform: "translateX(-50%)" } },
+        scan:      { "0%": { transform: "translateY(-100%)" }, "100%": { transform: "translateY(100%)" } },
+        slideUp:   { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
+        thinking:  { "0%, 80%, 100%": { transform: "scale(0.7)", opacity: "0.4" }, "40%": { transform: "scale(1)", opacity: "1" } },
       },
       boxShadow: {
-        "glow-finance":   "0 0 24px 0 #6366F130",
-        "glow-health":    "0 0 24px 0 #10B98130",
-        "glow-education": "0 0 24px 0 #F59E0B30",
-        "card":           "0 1px 3px 0 rgba(0,0,0,0.4), 0 1px 2px -1px rgba(0,0,0,0.4)",
+        "glow-finance":   "0 0 28px 0 #6B5BFF30",
+        "glow-health":    "0 0 28px 0 #2BCD8A30",
+        "glow-education": "0 0 28px 0 #E5A14B30",
+        "card":           "0 1px 2px 0 rgba(0,0,0,0.4)",
       },
     },
   },

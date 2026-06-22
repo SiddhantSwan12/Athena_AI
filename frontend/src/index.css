@@ -4,56 +4,131 @@
 
 :root {
   color-scheme: dark;
-  --font-syne: "Syne", sans-serif;
-  --font-inter: "Inter", sans-serif;
+  --font-display: "Fraunces", serif;
+  --font-sans: "Inter Tight", Inter, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  /* Default vertical accent — finance ink */
+  --accent:      #6B5BFF;
+  --accent-dim:  #6B5BFF18;
+  --accent-glow: #6B5BFF40;
 }
 
-* { box-sizing: border-box; }
+[data-vertical="finance"]   { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
+[data-vertical="health"]    { --accent: #2BCD8A; --accent-dim: #2BCD8A18; --accent-glow: #2BCD8A40; }
+[data-vertical="education"] { --accent: #E5A14B; --accent-dim: #E5A14B18; --accent-glow: #E5A14B40; }
+[data-vertical="auto"]      { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
 
+* { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background-color: #05070F;
-  color: #F9FAFB;
-  font-family: var(--font-inter), system-ui, sans-serif;
+  background-color: #070608;
+  color: #F4EFE7;
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 html { scroll-behavior: smooth; }
 
-/* Scrollbar — slim, dark */
+/* Editorial typographic defaults */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #374151; }
+::-webkit-scrollbar-thumb { background: #231F25; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2E2932; }
 
 /* Selection */
-::selection { background: #6366F130; color: #F9FAFB; }
+::selection { background: rgba(107,91,255,0.32); color: #F4EFE7; }
 
-/* Subtle grid background utility for landing */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 64px 64px;
-  background-position: -1px -1px;
+/* Paper-noise overlay for surfaces */
+.paper-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* Editorial baseline rule */
+.editorial-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #231F25 12%, #231F25 88%, transparent 100%);
+}
+
+/* Subtle dotted grid — replaces square grid for editorial feel */
+.dot-grid {
+  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 18px 18px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
 }
 
-/* Vertical accent CSS variables (driven by VerticalProvider) */
-[data-vertical="finance"]   { --accent: #6366F1; --accent-dim: #6366F120; --accent-glow: #6366F140; }
-[data-vertical="health"]    { --accent: #10B981; --accent-dim: #10B98120; --accent-glow: #10B98140; }
-[data-vertical="education"] { --accent: #F59E0B; --accent-dim: #F59E0B20; --accent-glow: #F59E0B40; }
-[data-vertical="auto"]      { --accent: #6366F1; --accent-dim: #6366F120; --accent-glow: #6366F140; }
+/* CRT-ish scanline (very subtle, only on hero terminal) */
+.scanlines {
+  background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px);
+  background-size: 100% 3px;
+}
 
-/* Markdown prose for answers */
-.prose-athena { color: #E5E7EB; line-height: 1.65; font-size: 0.92rem; }
+/* Marker number — for sectional numbering "01 — DOMAIN" */
+.marker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #5D5560;
+}
+
+/* Drop-cap style for editorial paragraphs */
+.dropcap::first-letter {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 3.6em;
+  line-height: 0.85;
+  float: left;
+  margin: 0.05em 0.12em -0.05em -0.02em;
+  color: #F4EFE7;
+}
+
+/* HUD ruler ticks for terminal-style boxes */
+.hud-corners {
+  position: relative;
+}
+.hud-corners::before,
+.hud-corners::after,
+.hud-corners > .hud-c1,
+.hud-corners > .hud-c2 {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--accent, #6B5BFF);
+}
+.hud-corners::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.hud-corners::after  { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.hud-corners > .hud-c1 { bottom: -1px; left: -1px; border-right: none; border-top: none; position: absolute; }
+.hud-corners > .hud-c2 { bottom: -1px; right: -1px; border-left: none; border-top: none; position: absolute; }
+
+/* Tabular figures for HUD numbers */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Markdown prose for assistant answers */
+.prose-athena { color: #E8E2DA; line-height: 1.65; font-size: 0.92rem; }
 .prose-athena p { margin: 0.55rem 0; }
-.prose-athena strong { color: #F9FAFB; font-weight: 600; }
+.prose-athena strong { color: #F4EFE7; font-weight: 600; }
 .prose-athena code {
   background: rgba(0,0,0,0.45);
   border: 1px solid rgba(255,255,255,0.06);
@@ -63,7 +138,7 @@ html { scroll-behavior: smooth; }
   font-size: 0.85em;
 }
 .prose-athena pre {
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.55);
   border: 1px solid rgba(255,255,255,0.06);
   padding: 0.9rem;
   border-radius: 0.6rem;
@@ -75,15 +150,16 @@ html { scroll-behavior: smooth; }
 .prose-athena li { margin: 0.2rem 0; }
 .prose-athena a { color: #93C5FD; text-decoration: underline; text-underline-offset: 2px; }
 .prose-athena h1, .prose-athena h2, .prose-athena h3 {
-  color: #F9FAFB;
-  font-family: var(--font-syne);
-  font-weight: 700;
+  color: #F4EFE7;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-style: italic;
   margin: 0.9rem 0 0.5rem;
 }
 .prose-athena blockquote {
-  border-left: 2px solid var(--accent, #6366F1);
+  border-left: 2px solid var(--accent, #6B5BFF);
   padding-left: 0.9rem;
-  color: #CBD5E1;
+  color: #C7BFC9;
   margin: 0.55rem 0;
 }
 .line-clamp-3 {
@@ -91,4 +167,22 @@ html { scroll-behavior: smooth; }
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Custom underline animation for nav links / inline links */
+.link-line {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  transition: background-size .4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-line:hover { background-size: 100% 1px; }
+
+/* Brand wordmark italic stylized */
+.wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }

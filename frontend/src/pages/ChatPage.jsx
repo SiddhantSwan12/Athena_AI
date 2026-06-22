@@ -101,34 +101,38 @@ export default function ChatPage() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-8 py-8 relative z-10" data-testid="chat-window">
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center pb-12" data-testid="empty-state">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="text-5xl mb-4"
-                >
-                  🦉
-                </motion.div>
+              <div className="flex flex-col min-h-[68vh] pb-12 pt-8" data-testid="empty-state">
+                <div className="flex items-center gap-3 mb-7">
+                  <span className="marker">№ 01 · today&apos;s session</span>
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-quiet tabular">
+                    {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  </span>
+                </div>
+
                 <motion.h1
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.05 }}
-                  className="font-display font-bold text-3xl sm:text-4xl text-primary tracking-tight"
+                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="font-display text-primary leading-[0.95] tracking-tight"
+                  style={{ fontSize: "clamp(40px, 5.5vw, 76px)" }}
                 >
-                  Ask Athena anything.
+                  What would you like to{" "}
+                  <em className="italic font-medium" style={{ color: surfaceAccent }}>know</em>?
                 </motion.h1>
+
                 <motion.p
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.12 }}
-                  className="mt-3 text-secondary text-sm max-w-md leading-relaxed"
+                  transition={{ duration: 0.55, delay: 0.08 }}
+                  className="mt-5 max-w-lg text-secondary text-[1rem] leading-[1.7]"
                 >
-                  Switch domains above or let Athena auto-detect.
-                  Answers are grounded in your documents with full citations.
+                  Athena auto-routes to the right domain and grounds every answer
+                  in your library. Pick a thread to begin, or
+                  <em className="italic"> type freely below.</em>
                 </motion.p>
 
-                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl w-full">
+                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {SUGGESTIONS.map((s, i) => {
                     const a = ACCENT_MAP[s.v].accent;
                     return (
@@ -137,31 +141,44 @@ export default function ChatPage() {
                         data-testid={`suggestion-${s.v}`}
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.45, delay: 0.18 + i * 0.07 }}
+                        transition={{ duration: 0.5, delay: 0.18 + i * 0.07 }}
                         whileHover={{ y: -2 }}
                         onClick={() => { setVertical(s.v); setInput(s.q); }}
-                        className="text-left p-4 rounded-2xl border bg-surface/40 hover:bg-surface transition-all"
+                        className="text-left p-5 rounded-xl border bg-paper/40 hover:bg-paper transition-all"
                         style={{ borderColor: `${a}25` }}
                       >
-                        <p className="text-[10px] uppercase tracking-[0.2em] font-mono" style={{ color: a }}>
-                          {s.v}
-                        </p>
-                        <p className="mt-2 text-sm text-primary/90 leading-snug">{s.q}</p>
+                        <div className="flex items-center justify-between mb-3 font-mono text-[10px] uppercase tracking-[0.22em]">
+                          <span style={{ color: a }}>{s.v}</span>
+                          <span className="text-quiet tabular">0{i + 1}</span>
+                        </div>
+                        <p className="font-display italic text-primary text-lg leading-snug">{s.q}</p>
                       </motion.button>
                     );
                   })}
                 </div>
 
-                <motion.button
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                  onClick={() => nav("/upload")}
-                  data-testid="empty-state-upload-link"
-                  className="mt-10 text-tertiary hover:text-secondary text-xs font-mono transition-colors"
+                  transition={{ duration: 0.5, delay: 0.45 }}
+                  className="mt-12 flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.22em] text-quiet"
                 >
-                  No documents indexed yet? Upload your first →
-                </motion.button>
+                  <span>or</span>
+                  <button
+                    onClick={() => nav("/upload")}
+                    data-testid="empty-state-upload-link"
+                    className="text-tertiary hover:text-primary transition-colors link-line"
+                  >
+                    + index a new document
+                  </button>
+                  <span>·</span>
+                  <button
+                    onClick={() => nav("/library")}
+                    className="text-tertiary hover:text-primary transition-colors link-line"
+                  >
+                    browse your library →
+                  </button>
+                </motion.div>
               </div>
             )}
 
