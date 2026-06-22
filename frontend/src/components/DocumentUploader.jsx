@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useVertical, ACCENT_MAP, VERTICAL_META } from "../lib/VerticalContext";
 import { ingestApi } from "../lib/api";
+import { VERTICAL_ICON } from "./Icons";
 
 export default function DocumentUploader({ onUploaded }) {
   const { vertical: ctxVertical, setVertical } = useVertical();
@@ -67,12 +68,13 @@ export default function DocumentUploader({ onUploaded }) {
           {Object.entries(VERTICAL_META).map(([id, v]) => {
             const va = ACCENT_MAP[id].accent;
             const active = vertical === id;
+            const Icon = VERTICAL_ICON[id];
             return (
               <button
                 key={id}
                 data-testid={`upload-vertical-${id}`}
                 onClick={() => setLocal(id)}
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all border ${
+                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all border inline-flex items-center gap-2 ${
                   active ? "text-primary" : "text-tertiary border-border hover:text-secondary"
                 }`}
                 style={
@@ -81,7 +83,8 @@ export default function DocumentUploader({ onUploaded }) {
                     : {}
                 }
               >
-                <span className="mr-1.5">{v.icon}</span>{v.label}
+                <Icon size={13} style={active ? { color: va } : {}} />
+                {v.label}
               </button>
             );
           })}

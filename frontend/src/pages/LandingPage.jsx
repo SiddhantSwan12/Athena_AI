@@ -5,6 +5,7 @@ import Hero from "../components/landing/Hero";
 import QuestionMarquee from "../components/landing/QuestionMarquee";
 import DomainShowcase from "../components/landing/DomainShowcase";
 import Schematic from "../components/landing/Schematic";
+import { OwlIcon } from "../components/Icons";
 import { useAuth } from "../hooks/useAuth";
 
 export default function LandingPage() {
@@ -13,8 +14,11 @@ export default function LandingPage() {
     <div className="min-h-screen bg-ink text-primary relative">
       {/* Nav */}
       <nav className="relative z-30 flex items-center justify-between px-6 sm:px-10 py-5 border-b border-border bg-ink/70 backdrop-blur-md">
-        <Link to="/" className="wordmark text-xl text-primary" data-testid="brand-link">
-          Athena<span className="text-tertiary not-italic font-mono font-normal text-sm align-super ml-0.5">.ai</span>
+        <Link to="/" className="wordmark text-xl text-primary flex items-center gap-2" data-testid="brand-link">
+          <span style={{ color: "#6B5BFF" }}>
+            <OwlIcon size={20} />
+          </span>
+          <span>Athena<span className="text-tertiary not-italic font-mono font-normal text-sm align-super ml-0.5">.ai</span></span>
         </Link>
         <div className="hidden sm:flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.22em] text-tertiary">
           <a href="#showcase" className="px-3 py-1 hover:text-primary transition-colors link-line">Domains</a>

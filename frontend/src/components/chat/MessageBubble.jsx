@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
+import { OwlIcon } from "../Icons";
 
 export default function MessageBubble({ message, index }) {
   const isUser = message.role === "user";
@@ -27,11 +28,11 @@ export default function MessageBubble({ message, index }) {
     >
       {!isUser && (
         <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-1 text-sm border border-border bg-surface"
-          style={{ boxShadow: `0 0 12px 0 ${msgAccent}40` }}
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-1 border border-border bg-surface"
+          style={{ boxShadow: `0 0 12px 0 ${msgAccent}40`, color: msgAccent }}
           aria-hidden
         >
-          🦉
+          <OwlIcon size={15} />
         </div>
       )}
 

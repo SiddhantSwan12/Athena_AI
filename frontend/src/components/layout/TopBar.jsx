@@ -4,6 +4,7 @@ import { LogOut, MessageSquare, Upload, Library } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useVertical } from "../../lib/VerticalContext";
 import VerticalSwitcher from "../vertical/VerticalSwitcher";
+import { OwlIcon } from "../Icons";
 
 export default function TopBar({ onClear, showSwitcher = true, rightSlot }) {
   const { user, logout } = useAuth();
@@ -19,7 +20,10 @@ export default function TopBar({ onClear, showSwitcher = true, rightSlot }) {
     <header className="border-b border-border px-5 sm:px-6 py-3 flex items-center justify-between shrink-0 bg-void/70 backdrop-blur-sm relative z-20">
       <div className="flex items-center gap-5">
         <Link to="/" className="flex items-center gap-2 group" data-testid="brand-link">
-          <span className="font-display font-bold text-base text-primary tracking-tight">Athena</span>
+          <span className="text-primary group-hover:opacity-80 transition-opacity" style={{ color: "var(--accent, #6B5BFF)" }}>
+            <OwlIcon size={18} />
+          </span>
+          <span className="wordmark text-base text-primary tracking-tight">Athena</span>
           <motion.span
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: accent }}
