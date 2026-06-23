@@ -1,4 +1,4 @@
-"""Convert text to a 768-dim vector using Gemini text-embedding-004."""
+"""Convert text to a 3072-dim vector using Gemini embedding."""
 import asyncio
 import google.generativeai as genai
 

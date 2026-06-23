@@ -10,7 +10,7 @@ from config import settings
 from db import users_col
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-bearer = HTTPBearer(auto_error=True)
+bearer = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -28,12 +28,16 @@ def create_access_token(user_id: str, email: str) -> str:
 
 
 async def get_current_user(
-    creds: HTTPAuthorizationCredentials = Depends(bearer),
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
 ) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
+    if creds is None:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(
             creds.credentials, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]

@@ -93,7 +93,15 @@ class TestAuth:
 
     def test_me_without_token_401(self, session):
         r = requests.get(f"{BASE_URL}/api/auth/me", timeout=10)
-        assert r.status_code in (401, 403)
+        assert r.status_code == 401
+
+    def test_me_with_malformed_token_401(self, session):
+        r = session.get(
+            f"{BASE_URL}/api/auth/me",
+            headers=auth_headers("not-a-valid-jwt"),
+            timeout=10,
+        )
+        assert r.status_code == 401
 
 
 # ---------- Chat / Classification ----------
@@ -152,7 +160,7 @@ class TestChat:
 
     def test_chat_unauthorized(self, session):
         r = requests.post(f"{BASE_URL}/api/chat", json={"query": "hi"}, timeout=10)
-        assert r.status_code in (401, 403)
+        assert r.status_code == 401
 
 
 # ---------- Conversations ----------
@@ -212,7 +220,7 @@ class TestIngestion:
         TestIngestion.created_doc_id = body["document_id"]
 
     def test_ingest_text_invalid_vertical(self, session, fresh_user):
-        payload = {"title": "x", "vertical": "sports",
+        payload = {"title": "x", "vertical": "invalid_vertical",
                    "content": "x" * 50}
         r = session.post(f"{BASE_URL}/api/ingest/text",
                          headers=auth_headers(fresh_user["token"]),
@@ -243,7 +251,7 @@ class TestIngestion:
 
     def test_ingest_file_invalid_vertical(self, session, fresh_user):
         files = {"file": ("x.txt", io.BytesIO(b"hello world " * 20), "text/plain")}
-        data = {"vertical": "sports", "title": "x"}
+        data = {"vertical": "invalid_vertical", "title": "x"}
         r = requests.post(f"{BASE_URL}/api/ingest/file",
                           headers={"Authorization": f"Bearer {fresh_user['token']}"},
                           files=files, data=data, timeout=15)

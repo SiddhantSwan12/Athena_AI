@@ -138,9 +138,164 @@ export function AutoIcon({ size = 16, className = "", style = {} }) {
   );
 }
 
+export function TechnologyIcon({ size = 16, className = "", style = {} }) {
+  // Microprocessor / chip
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <rect x="4.5" y="4.5" width="7" height="7" rx="1" />
+      <path d="M6.5 2.5 V4.5" />
+      <path d="M9.5 2.5 V4.5" />
+      <path d="M6.5 11.5 V13.5" />
+      <path d="M9.5 11.5 V13.5" />
+      <path d="M2.5 6.5 H4.5" />
+      <path d="M2.5 9.5 H4.5" />
+      <path d="M11.5 6.5 H13.5" />
+      <path d="M11.5 9.5 H13.5" />
+    </svg>
+  );
+}
+
+export function GeopoliticsIcon({ size = 16, className = "", style = {} }) {
+  // Globe with latitude/longitude ellipses
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M2.5 8 H13.5" />
+      <path d="M8 2.5 C 5.5 5 5.5 11 8 13.5 C 10.5 11 10.5 5 8 2.5" />
+    </svg>
+  );
+}
+
+export function LawIcon({ size = 16, className = "", style = {} }) {
+  // Balance scales of justice
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <path d="M8 2 V13.5" />
+      <path d="M2.5 4.5 H13.5" />
+      <path d="M2.5 4.5 L1 9 H4 L2.5 4.5" />
+      <path d="M13.5 4.5 L12 9 H15 L13.5 4.5" />
+      <path d="M5.5 13.5 H10.5" />
+    </svg>
+  );
+}
+
+export function EnvironmentIcon({ size = 16, className = "", style = {} }) {
+  // Simple diagonal leaf
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <path d="M2 14 C 3 9 7.5 4.5 13.5 2.5 C 13.5 2.5 14 5.5 10.5 8.5 C 7 11.5 4 13 2 14" />
+      <path d="M2 14 L5.5 10.5" />
+    </svg>
+  );
+}
+
+export function BusinessIcon({ size = 16, className = "", style = {} }) {
+  // Briefcase
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <rect x="2.5" y="5" width="11" height="8.5" rx="1.5" />
+      <path d="M5.5 5 V2.5 C 5.5 2 6 1.5 6.5 1.5 H9.5 C 10 1.5 10.5 2 10.5 2.5 V5" />
+      <path d="M2.5 8.5 H13.5" />
+    </svg>
+  );
+}
+
+export function SportsIcon({ size = 16, className = "", style = {} }) {
+  // Trophy
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <path d="M4 2 H12 V7 C12 9 10 11 8 11 C6 11 4 9 4 7 Z" />
+      <path d="M8 11 V13.5" />
+      <path d="M5.5 13.5 H10.5" />
+      <path d="M4 4 H2.5 C1.5 4 1.5 6 2.5 6 H4" />
+      <path d="M12 4 H13.5 C14.5 4 14.5 6 13.5 6 H12" />
+    </svg>
+  );
+}
+
+export function EntertainmentIcon({ size = 16, className = "", style = {} }) {
+  // Movie film strip / clapperboard
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...base}
+    >
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+      <path d="M5.5 2.5 V13.5" />
+      <path d="M10.5 2.5 V13.5" />
+      <path d="M2.5 5.5 H5.5" />
+      <path d="M2.5 8.5 H5.5" />
+      <path d="M2.5 11.5 H5.5" />
+      <path d="M10.5 5.5 H13.5" />
+      <path d="M10.5 8.5 H13.5" />
+      <path d="M10.5 11.5 H13.5" />
+    </svg>
+  );
+}
+
 // Map vertical id → icon component
 export const VERTICAL_ICON = {
-  finance:   FinanceIcon,
-  health:    HealthIcon,
-  education: EducationIcon,
+  finance:       FinanceIcon,
+  health:        HealthIcon,
+  education:     EducationIcon,
+  technology:    TechnologyIcon,
+  geopolitics:   GeopoliticsIcon,
+  law:           LawIcon,
+  environment:   EnvironmentIcon,
+  business:      BusinessIcon,
+  sports:        SportsIcon,
+  entertainment: EntertainmentIcon,
 };

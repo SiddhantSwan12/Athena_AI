@@ -14,10 +14,17 @@
   --accent-glow: #6B5BFF40;
 }
 
-[data-vertical="finance"]   { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
-[data-vertical="health"]    { --accent: #2BCD8A; --accent-dim: #2BCD8A18; --accent-glow: #2BCD8A40; }
-[data-vertical="education"] { --accent: #E5A14B; --accent-dim: #E5A14B18; --accent-glow: #E5A14B40; }
-[data-vertical="auto"]      { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
+[data-vertical="finance"]       { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
+[data-vertical="health"]        { --accent: #2BCD8A; --accent-dim: #2BCD8A18; --accent-glow: #2BCD8A40; }
+[data-vertical="education"]     { --accent: #E5A14B; --accent-dim: #E5A14B18; --accent-glow: #E5A14B40; }
+[data-vertical="technology"]    { --accent: #00D2FF; --accent-dim: #00D2FF18; --accent-glow: #00D2FF40; }
+[data-vertical="geopolitics"]   { --accent: #FF5353; --accent-dim: #FF535318; --accent-glow: #FF535340; }
+[data-vertical="law"]           { --accent: #B4916C; --accent-dim: #B4916C18; --accent-glow: #B4916C40; }
+[data-vertical="environment"]   { --accent: #15B77F; --accent-dim: #15B77F18; --accent-glow: #15B77F40; }
+[data-vertical="business"]      { --accent: #3B82F6; --accent-dim: #3B82F618; --accent-glow: #3B82F640; }
+[data-vertical="sports"]        { --accent: #FF7E40; --accent-dim: #FF7E4018; --accent-glow: #FF7E4040; }
+[data-vertical="entertainment"] { --accent: #EC4899; --accent-dim: #EC489918; --accent-glow: #EC489940; }
+[data-vertical="auto"]          { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -80,6 +87,11 @@ html { scroll-behavior: smooth; }
 .scanlines {
   background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px);
   background-size: 100% 3px;
+}
+
+.route-mask {
+  mask-image: radial-gradient(ellipse at center, black 15%, transparent 76%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 15%, transparent 76%);
 }
 
 /* Marker number — for sectional numbering "01 — DOMAIN" */
@@ -185,4 +197,13 @@ html { scroll-behavior: smooth; }
   font-style: italic;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }

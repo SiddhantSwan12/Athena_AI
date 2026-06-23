@@ -36,6 +36,70 @@ export const authApi = {
 
 export const chatApi = {
   send: (payload) => api.post("/api/chat", payload).then((r) => r.data),
+  stream: async (payload, handlers = {}) => {
+    const token = localStorage.getItem("athena_token");
+    const res = await fetch(`${BASE}/api/chat/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem("athena_token");
+      localStorage.removeItem("athena_user");
+      window.location.href = "/login";
+      throw new Error("Unauthorized");
+    }
+
+    if (!res.ok || !res.body) {
+      let detail = "Request failed";
+      try {
+        const data = await res.json();
+        detail = data?.detail || detail;
+      } catch {
+        detail = res.statusText || detail;
+      }
+      throw new Error(detail);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalData = null;
+
+    const dispatch = (block) => {
+      const lines = block.split("\n");
+      const eventLine = lines.find((line) => line.startsWith("event:"));
+      const dataLines = lines.filter((line) => line.startsWith("data:"));
+      if (!eventLine || !dataLines.length) return;
+
+      const event = eventLine.slice("event:".length).trim();
+      const rawData = dataLines.map((line) => line.slice("data:".length).trim()).join("\n");
+      const data = JSON.parse(rawData);
+
+      if (event === "meta") handlers.onMeta?.(data);
+      if (event === "token") handlers.onToken?.(data);
+      if (event === "done") {
+        finalData = data;
+        handlers.onDone?.(data);
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      parts.forEach(dispatch);
+      if (done) break;
+    }
+
+    if (buffer.trim()) dispatch(buffer);
+    return finalData;
+  },
 };
 
 export const ingestApi = {

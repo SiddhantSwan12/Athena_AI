@@ -23,23 +23,62 @@ export function useChat() {
       setIsLoading(true);
 
       try {
-        const data = await chatApi.send({
-          query,
-          vertical: vertical || undefined,
-          conversation_id: conversationId || undefined,
-        });
-        const assistantMessage = {
-          id: uuidv4(),
-          role: "assistant",
-          content: data.answer,
-          vertical: data.vertical,
-          classified_vertical: data.classified_vertical,
-          sources: data.sources || [],
-          timestamp: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setConversationId(data.conversation_id);
-        setActiveVerticalFromAnswer(data.vertical);
+        const assistantId = uuidv4();
+        let streamedContent = "";
+
+        await chatApi.stream(
+          {
+            query,
+            vertical: vertical || undefined,
+            conversation_id: conversationId || undefined,
+          },
+          {
+            onMeta: (data) => {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  content: "",
+                  vertical: data.vertical,
+                  classified_vertical: data.classified_vertical,
+                  sources: data.sources || [],
+                  web_sources: data.web_sources || [],
+                  timestamp: new Date().toISOString(),
+                  isStreaming: true,
+                },
+              ]);
+              setActiveVerticalFromAnswer(data.vertical);
+            },
+            onToken: ({ text }) => {
+              streamedContent += text || "";
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, content: streamedContent } : m
+                )
+              );
+            },
+            onDone: (data) => {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? {
+                        ...m,
+                        content: data.answer || streamedContent,
+                        vertical: data.vertical,
+                        classified_vertical: data.classified_vertical,
+                        sources: data.sources || [],
+                        web_sources: data.web_sources || [],
+                        isStreaming: false,
+                      }
+                    : m
+                )
+              );
+              setConversationId(data.conversation_id);
+              setActiveVerticalFromAnswer(data.vertical);
+            },
+          }
+        );
       } catch (e) {
         const msg = e?.response?.data?.detail || e.message || "Something went wrong";
         setError(typeof msg === "string" ? msg : "Request failed");
@@ -68,6 +107,7 @@ export function useChat() {
         vertical: m.vertical,
         classified_vertical: m.classified_vertical,
         sources: m.sources || [],
+        web_sources: m.web_sources || [],
         timestamp: m.timestamp,
       }))
     );

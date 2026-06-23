@@ -15,6 +15,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 _client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+_async_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 # Fall back to a widely available Sonnet model if the alias isn't enabled
 _MODEL_CANDIDATES = ["claude-sonnet-4-5", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20241022"]
 
@@ -61,6 +62,30 @@ def _build_context(chunks: list[dict], web_results: list[dict]) -> str:
         return "No context available."
 
     return "\n\n".join(parts)
+
+
+def format_rag_sources(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": c["id"],
+            "title": c.get("title"),
+            "content": (c["content"][:240] + "…") if len(c["content"]) > 240 else c["content"],
+            "similarity": round(float(c.get("similarity", 0)), 3),
+        }
+        for c in chunks
+    ]
+
+
+def format_web_sources(web_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "title": r.get("title", "Web result"),
+            "url": r.get("url", ""),
+            "content": (r["content"][:240] + "…") if len(r["content"]) > 240 else r["content"],
+            "score": r.get("score", 0),
+        }
+        for r in web_results
+    ]
 
 
 def _call_claude_sync(system: str, user: str) -> str:
@@ -121,31 +146,52 @@ async def generate_answer(
             f"Sorry, I couldn't generate an answer right now. ({type(e).__name__})"
         )
 
-    # RAG sources
-    rag_sources = [
-        {
-            "id": c["id"],
-            "title": c.get("title"),
-            "content": (c["content"][:240] + "…") if len(c["content"]) > 240 else c["content"],
-            "similarity": round(float(c.get("similarity", 0)), 3),
-        }
-        for c in chunks
-    ]
-
-    # Web sources
-    live_sources = [
-        {
-            "title": r.get("title", "Web result"),
-            "url": r.get("url", ""),
-            "content": (r["content"][:240] + "…") if len(r["content"]) > 240 else r["content"],
-            "score": r.get("score", 0),
-        }
-        for r in web_results
-    ]
-
     return {
         "answer": answer_text,
-        "sources": rag_sources,
-        "web_sources": live_sources,
+        "sources": format_rag_sources(chunks),
+        "web_sources": format_web_sources(web_results),
         "vertical": vertical,
     }
+
+
+async def stream_answer_text(
+    query: str,
+    chunks: list[dict[str, Any]],
+    vertical: str,
+    web_results: list[dict[str, Any]] | None = None,
+):
+    """Yield Claude text deltas for a grounded answer."""
+    web_results = web_results or []
+
+    if not chunks and not web_results:
+        yield (
+            "I couldn't find relevant information for this query. "
+            "Try uploading related documents or rephrasing your question."
+        )
+        return
+
+    context_block = _build_context(chunks, web_results)
+    system_prompt = _SYSTEM_PROMPT.format(vertical=vertical, context=context_block)
+
+    last_err: Exception | None = None
+    for model in _MODEL_CANDIDATES:
+        try:
+            async with _async_client.messages.stream(
+                model=model,
+                max_tokens=1024,
+                system=system_prompt,
+                messages=[{"role": "user", "content": query}],
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield text
+            return
+        except anthropic.NotFoundError as e:
+            last_err = e
+            continue
+        except Exception as e:
+            logger.exception("Claude streaming failed")
+            yield f"Sorry, I couldn't generate an answer right now. ({type(e).__name__})"
+            return
+
+    logger.warning("All Claude streaming model candidates failed: %s", last_err)
+    yield "Sorry, I couldn't generate an answer right now. (ModelNotFound)"

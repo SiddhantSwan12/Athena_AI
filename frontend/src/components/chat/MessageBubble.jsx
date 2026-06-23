@@ -54,6 +54,15 @@ export default function MessageBubble({ message, index }) {
           ) : (
             <div className="prose-athena">
               <ReactMarkdown>{message.content}</ReactMarkdown>
+              {message.isStreaming && (
+                <motion.span
+                  aria-hidden
+                  className="inline-block w-1.5 h-4 ml-1 align-[-2px] rounded-full"
+                  style={{ background: msgAccent }}
+                  animate={{ opacity: [0.25, 1, 0.25] }}
+                  transition={{ duration: 0.9, repeat: Infinity }}
+                />
+              )}
             </div>
           )}
         </div>
@@ -72,7 +81,18 @@ export default function MessageBubble({ message, index }) {
         </div>
 
         {!isUser && message.sources?.length > 0 && (
-          <SourceDrawer sources={message.sources} messageVertical={message.vertical} />
+          <SourceDrawer
+            sources={message.sources}
+            webSources={message.web_sources || []}
+            messageVertical={message.vertical}
+          />
+        )}
+        {!isUser && !message.sources?.length && message.web_sources?.length > 0 && (
+          <SourceDrawer
+            sources={[]}
+            webSources={message.web_sources}
+            messageVertical={message.vertical}
+          />
         )}
       </div>
     </motion.div>

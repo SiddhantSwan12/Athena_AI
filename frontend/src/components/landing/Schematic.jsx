@@ -66,7 +66,16 @@ export default function Schematic() {
         </div>
 
         <div className="lg:col-span-8">
-          <ol className="space-y-3">
+          <ol className="relative space-y-3">
+            <motion.div
+              aria-hidden
+              className="absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-finance/70 to-transparent"
+              initial={{ scaleX: 0, opacity: 0 }}
+              whileInView={{ scaleX: 1, opacity: 1 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              style={{ transformOrigin: "left" }}
+            />
             {STEPS.map((step, i) => (
               <motion.li
                 key={step.n}
@@ -77,7 +86,19 @@ export default function Schematic() {
                 className="relative"
               >
                 <div className="grid grid-cols-12 gap-3 sm:gap-5 items-start py-4 border-t border-border">
-                  <div className="col-span-2 sm:col-span-1 marker tabular pt-1">{step.n}</div>
+                  <div className="col-span-2 sm:col-span-1 marker tabular pt-1">
+                    <motion.span
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-border bg-paper"
+                      whileInView={{
+                        borderColor: ["#231F25", "#6B5BFF", "#231F25"],
+                        color: ["#5D5560", "#F4EFE7", "#5D5560"],
+                      }}
+                      viewport={{ once: true, margin: "-50px" }}
+                      transition={{ duration: 1.4, delay: 0.2 + i * 0.18 }}
+                    >
+                      {step.n}
+                    </motion.span>
+                  </div>
                   <div className="col-span-10 sm:col-span-3">
                     <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-quiet">{step.label}</p>
                     <p className="font-display italic text-2xl text-primary tracking-tight mt-1">{step.title}</p>
@@ -86,11 +107,27 @@ export default function Schematic() {
                     <p className="text-secondary text-sm leading-relaxed">{step.body}</p>
                   </div>
                   <div className="col-span-12 sm:col-span-3 sm:pt-1 text-left sm:text-right">
-                    <span className="inline-block font-mono text-[10px] uppercase tracking-[0.22em] text-quiet px-2 py-1 rounded border border-border bg-paper/40 tabular">
+                    <motion.span
+                      className="inline-block font-mono text-[10px] uppercase tracking-[0.22em] text-quiet px-2 py-1 rounded border border-border bg-paper/40 tabular"
+                      whileInView={{ opacity: [0.45, 1, 0.7] }}
+                      viewport={{ once: true, margin: "-50px" }}
+                      transition={{ duration: 0.8, delay: 0.25 + i * 0.1 }}
+                    >
                       {step.sub}
-                    </span>
+                    </motion.span>
                   </div>
                 </div>
+                {step.arrow && (
+                  <motion.div
+                    aria-hidden
+                    className="ml-0 sm:ml-7 h-3 w-px bg-gradient-to-b from-finance/70 to-transparent"
+                    initial={{ scaleY: 0, opacity: 0 }}
+                    whileInView={{ scaleY: 1, opacity: 1 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.35, delay: 0.25 + i * 0.08 }}
+                    style={{ transformOrigin: "top" }}
+                  />
+                )}
               </motion.li>
             ))}
           </ol>

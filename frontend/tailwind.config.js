@@ -21,6 +21,13 @@ module.exports = {
         finance:   { DEFAULT: "#6B5BFF", dim: "#6B5BFF18", glow: "#6B5BFF40" }, // electric ink
         health:    { DEFAULT: "#2BCD8A", dim: "#2BCD8A18", glow: "#2BCD8A40" }, // herbarium green
         education: { DEFAULT: "#E5A14B", dim: "#E5A14B18", glow: "#E5A14B40" }, // foxed-paper amber
+        technology: { DEFAULT: "#00D2FF", dim: "#00D2FF18", glow: "#00D2FF40" },
+        geopolitics: { DEFAULT: "#FF5353", dim: "#FF535318", glow: "#FF535340" },
+        law:       { DEFAULT: "#B4916C", dim: "#B4916C18", glow: "#B4916C40" },
+        environment: { DEFAULT: "#15B77F", dim: "#15B77F18", glow: "#15B77F40" },
+        business:  { DEFAULT: "#3B82F6", dim: "#3B82F618", glow: "#3B82F640" },
+        sports:    { DEFAULT: "#FF7E40", dim: "#FF7E4018", glow: "#FF7E4040" },
+        entertainment: { DEFAULT: "#EC4899", dim: "#EC489918", glow: "#EC489940" },
 
         // Legacy aliases for older files
         void: "#070608",
@@ -57,6 +64,13 @@ module.exports = {
         "glow-finance":   "0 0 28px 0 #6B5BFF30",
         "glow-health":    "0 0 28px 0 #2BCD8A30",
         "glow-education": "0 0 28px 0 #E5A14B30",
+        "glow-technology": "0 0 28px 0 #00D2FF30",
+        "glow-geopolitics": "0 0 28px 0 #FF535330",
+        "glow-law":       "0 0 28px 0 #B4916C30",
+        "glow-environment": "0 0 28px 0 #15B77F30",
+        "glow-business":  "0 0 28px 0 #3B82F630",
+        "glow-sports":    "0 0 28px 0 #FF7E4030",
+        "glow-entertainment": "0 0 28px 0 #EC489930",
         "card":           "0 1px 2px 0 rgba(0,0,0,0.4)",
       },
     },

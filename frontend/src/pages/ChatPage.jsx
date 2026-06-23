@@ -13,10 +13,17 @@ import { useChat } from "../hooks/useChat";
 import { useVertical, ACCENT_MAP } from "../lib/VerticalContext";
 import { convosApi } from "../lib/api";
 
-const SUGGESTIONS = [
-  { v: "finance",   q: "How should I think about diversifying a stock portfolio across asset classes?" },
-  { v: "health",    q: "What are evidence-based ways to improve sleep quality long-term?" },
-  { v: "education", q: "Explain the bias-variance tradeoff in machine learning with an example." },
+const SUGGESTION_POOL = [
+  { v: "finance",       q: "How should I think about diversifying a stock portfolio across asset classes?" },
+  { v: "health",        q: "What are evidence-based ways to improve sleep quality long-term?" },
+  { v: "education",     q: "Explain the bias-variance tradeoff in machine learning with an example." },
+  { v: "technology",    q: "Explain the architectural tradeoffs of HNSW vs IVF-PQ vector indexing." },
+  { v: "geopolitics",   q: "What were the key trade outcomes of the 2024 EU-India bilateral summit?" },
+  { v: "law",           q: "Does an NDA mutual non-solicitation clause typically survive termination?" },
+  { v: "environment",   q: "What are Scope 3 emissions reporting exemptions under CSRD guidelines?" },
+  { v: "business",      q: "Summarize typical Q3 revenue growth drivers from an earnings deck." },
+  { v: "sports",        q: "What does literature say about eccentric loading for patellar tendinopathy?" },
+  { v: "entertainment", q: "Compare box office and critical reception of Dune vs the 2021 film." },
 ];
 
 export default function ChatPage() {
@@ -24,8 +31,16 @@ export default function ChatPage() {
   const { messages, isLoading, error, sendMessage, reset, hydrate, conversationId, activeVerticalFromAnswer } = useChat();
   const [input, setInput] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [suggestions, setSuggestions] = useState([]);
   const scrollRef = useRef(null);
   const nav = useNavigate();
+  const hasStreamingAssistant = messages.some((m) => m.role === "assistant" && m.isStreaming);
+
+  useEffect(() => {
+    // Pick 3 random distinct suggestions
+    const shuffled = [...SUGGESTION_POOL].sort(() => 0.5 - Math.random());
+    setSuggestions(shuffled.slice(0, 3));
+  }, []);
 
   // Reflect the answer-detected vertical back into the UI accent when the user is on "Auto"
   useEffect(() => {
@@ -133,7 +148,7 @@ export default function ChatPage() {
                 </motion.p>
 
                 <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {SUGGESTIONS.map((s, i) => {
+                  {suggestions.map((s, i) => {
                     const a = ACCENT_MAP[s.v].accent;
                     return (
                       <motion.button
@@ -186,7 +201,7 @@ export default function ChatPage() {
               <MessageBubble key={m.id} message={m} index={i} />
             ))}
 
-            <AnimatePresence>{isLoading && <ThinkingDots />}</AnimatePresence>
+            <AnimatePresence>{isLoading && !hasStreamingAssistant && <ThinkingDots />}</AnimatePresence>
           </div>
         </div>
 

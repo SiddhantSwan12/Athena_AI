@@ -2,13 +2,14 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVertical, ACCENT_MAP } from "../../lib/VerticalContext";
 
-export default function SourceDrawer({ sources, messageVertical }) {
+export default function SourceDrawer({ sources = [], webSources = [], messageVertical }) {
   const [open, setOpen] = useState(false);
   const { accent: ctxAccent } = useVertical();
   // Use this message's own vertical accent if available, fall back to context
   const accent = messageVertical && ACCENT_MAP[messageVertical] ? ACCENT_MAP[messageVertical].accent : ctxAccent;
+  const totalSources = sources.length + webSources.length;
 
-  if (!sources?.length) return null;
+  if (!totalSources) return null;
 
   return (
     <div className="w-full" data-testid="source-list">
@@ -21,7 +22,7 @@ export default function SourceDrawer({ sources, messageVertical }) {
         <motion.span animate={{ rotate: open ? 90 : 0 }} transition={{ duration: 0.2 }}>
           ›
         </motion.span>
-        {sources.length} source{sources.length !== 1 ? "s" : ""}
+        {totalSources} source{totalSources !== 1 ? "s" : ""}
       </button>
 
       <AnimatePresence initial={false}>
@@ -53,6 +54,33 @@ export default function SourceDrawer({ sources, messageVertical }) {
                 </div>
                 <p className="text-secondary leading-relaxed line-clamp-3">{src.content}</p>
               </div>
+            ))}
+            {webSources.map((src, i) => (
+              <a
+                key={src.url || src.title || i}
+                href={src.url}
+                target="_blank"
+                rel="noreferrer"
+                data-testid={`web-source-card-${i}`}
+                className="block px-3 py-2.5 rounded-lg border text-xs font-mono transition-colors hover:bg-surface"
+                style={{ borderColor: `${accent}30`, background: `${accent}08` }}
+              >
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <span className="min-w-0 truncate" style={{ color: accent }}>
+                    web_{i + 1}
+                    {src.title ? (
+                      <span className="text-tertiary"> · {src.title}</span>
+                    ) : null}
+                  </span>
+                  <span className="text-tertiary shrink-0">
+                    {(Number(src.score || 0) * 100).toFixed(0)}% match
+                  </span>
+                </div>
+                <p className="text-secondary leading-relaxed line-clamp-3">{src.content}</p>
+                {src.url && (
+                  <p className="mt-1.5 text-[10px] text-tertiary truncate">{src.url}</p>
+                )}
+              </a>
             ))}
           </motion.div>
         )}
