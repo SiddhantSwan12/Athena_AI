@@ -8,7 +8,7 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/") or \
-    "https://8dc692b8-3200-4541-97a3-8a89c0022e2e.preview.emergentagent.com"
+    "http://localhost:8001"
 
 DEMO_EMAIL = "demo@athena.ai"
 DEMO_PASSWORD = "demo1234"
