@@ -1,14 +1,16 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from db import conversations_col
-from models.schemas import ChatRequest, ChatResponse, SourceItem
+from models.schemas import ChatRequest, ChatResponse, SourceItem, WebSourceItem
 from services.auth_service import get_current_user
 from services.classifier import classify_vertical
 from services.generator import generate_answer
 from services.retriever import retrieve_chunks
+from services.web_search import web_search
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -21,8 +23,13 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     classified = await classify_vertical(req.query)
     active = req.vertical or classified
 
-    chunks = await retrieve_chunks(req.query, active)
-    result = await generate_answer(req.query, chunks, active)
+    # Run RAG retrieval + live web search in parallel — no added latency.
+    chunks, web_results = await asyncio.gather(
+        retrieve_chunks(req.query, active),
+        web_search(req.query, active),
+    )
+
+    result = await generate_answer(req.query, chunks, active, web_results)
 
     now_iso = datetime.now(timezone.utc).isoformat()
     convo_id = req.conversation_id or str(uuid.uuid4())

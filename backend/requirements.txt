@@ -14,4 +14,5 @@ pymongo==4.8.0
 python-jose==3.3.0
 python-multipart==0.0.9
 uvicorn==0.30.6
+tavily-python==0.7.26
 email-validator==2.2.0

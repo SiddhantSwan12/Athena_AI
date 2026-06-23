@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str
     GEMINI_API_KEY: str
     OPENAI_API_KEY: str = ""  # Used by classifier; leave empty to fall back to keyword matching
+    TAVILY_API_KEY: str = ""  # Used for real-time web search; leave empty to disable web search
     CORS_ORIGINS: str = "*"
     CHUNK_SIZE: int = 900
     CHUNK_OVERLAP: int = 120

@@ -55,11 +55,19 @@ class SourceItem(BaseModel):
     title: Optional[str] = None
 
 
+class WebSourceItem(BaseModel):
+    title: str
+    url: str
+    content: str
+    score: float = 0.0
+
+
 class ChatResponse(BaseModel):
     answer: str
     vertical: Vertical
     classified_vertical: Vertical
     sources: list[SourceItem]
+    web_sources: list[WebSourceItem] = []
     conversation_id: str
 
 

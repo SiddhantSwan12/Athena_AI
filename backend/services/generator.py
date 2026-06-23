@@ -1,6 +1,12 @@
-"""Grounded answer generation using Claude Sonnet (Anthropic)."""
+"""Grounded answer generation using Claude Sonnet (Anthropic).
+
+Accepts both RAG chunks (from MongoDB) and real-time web results (from Tavily).
+Claude is instructed to clearly distinguish between the two source types and
+prefer live web results for time-sensitive facts.
+"""
 import asyncio
 import logging
+from typing import Any
 
 import anthropic
 
@@ -13,19 +19,48 @@ _client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 _MODEL_CANDIDATES = ["claude-sonnet-4-5", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20241022"]
 
 _SYSTEM_PROMPT = """You are Athena, a precise and trustworthy AI assistant specialising in {vertical}.
+You have access to two types of information:
+  📚 KNOWLEDGE BASE — curated documents uploaded by the user (may not be up to date)
+  🌐 LIVE WEB — real-time search results fetched right now
 
 RULES:
-1. Answer ONLY using the context chunks provided below.
-2. If the answer cannot be found in the context, say exactly:
-   "I don't have enough information in my knowledge base to answer this accurately."
-3. After the answer, list the sources you used in this exact format:
-   [Source 1]: <one-line description of what that chunk covers>
-   [Source 2]: ...
-4. Be concise, factual, and cite specific chunks when making claims.
-5. Do NOT invent information that isn't in the context.
+1. Answer using BOTH sources when available. Prefer 🌐 LIVE WEB for recent events and facts.
+2. If the answer is not in either source, say:
+   "I don't have enough information to answer this accurately."
+3. After your answer, always list the sources you used:
+   - For knowledge base chunks: [KB Source N]: <one-line description>
+   - For web results: [Web Source N]: <title> — <url>
+4. Be concise and factual. Do NOT invent information not present in the context.
+5. If sources conflict, state the conflict explicitly and note which is more recent.
 
-CONTEXT:
 {context}"""
+
+
+def _build_context(chunks: list[dict], web_results: list[dict]) -> str:
+    """Build a single context string from RAG chunks + live web results."""
+    parts: list[str] = []
+
+    if chunks:
+        parts.append("📚 KNOWLEDGE BASE CHUNKS:")
+        for i, c in enumerate(chunks):
+            sim = c.get("similarity", 0)
+            title = c.get("title") or "document"
+            parts.append(
+                f"[KB Source {i + 1}] (relevance {sim:.2f}) from \"{title}\":\n{c['content']}"
+            )
+
+    if web_results:
+        parts.append("\n🌐 LIVE WEB RESULTS (fetched in real-time):")
+        for i, r in enumerate(web_results):
+            parts.append(
+                f"[Web Source {i + 1}] {r.get('title', 'Web result')} ({r.get('url', '')})\n"
+                f"{r['content']}"
+            )
+
+    if not parts:
+        return "No context available."
+
+    return "\n\n".join(parts)
 
 
 def _call_claude_sync(system: str, user: str) -> str:
@@ -48,34 +83,46 @@ def _call_claude_sync(system: str, user: str) -> str:
     raise last_err or RuntimeError("Claude call failed")
 
 
-async def generate_answer(query: str, chunks: list[dict], vertical: str) -> dict:
-    if not chunks:
+async def generate_answer(
+    query: str,
+    chunks: list[dict[str, Any]],
+    vertical: str,
+    web_results: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Generate a grounded answer using RAG chunks + optional live web results.
+
+    Args:
+        query:       The user's question.
+        chunks:      RAG chunks retrieved from MongoDB.
+        vertical:    The classified domain (e.g. 'geopolitics').
+        web_results: Live web results from Tavily (optional).
+    """
+    web_results = web_results or []
+
+    if not chunks and not web_results:
         return {
             "answer": (
-                "I couldn't find relevant information in the knowledge base for this query. "
-                "Try uploading related documents (PDF/TXT) for this vertical, or rephrase your question."
+                "I couldn't find relevant information for this query. "
+                "Try uploading related documents or rephrasing your question."
             ),
             "sources": [],
+            "web_sources": [],
             "vertical": vertical,
         }
 
-    context = "\n\n".join(
-        f"[Chunk {i + 1}] (similarity {c.get('similarity', 0):.2f}) "
-        f"from \"{c.get('title') or 'document'}\":\n{c['content']}"
-        for i, c in enumerate(chunks)
-    )
-    system_prompt = _SYSTEM_PROMPT.format(vertical=vertical, context=context)
+    context_block = _build_context(chunks, web_results)
+    system_prompt = _SYSTEM_PROMPT.format(vertical=vertical, context=context_block)
 
     try:
         answer_text = await asyncio.to_thread(_call_claude_sync, system_prompt, query)
     except Exception as e:
         logger.exception("Claude generation failed")
         answer_text = (
-            "Sorry, I couldn't generate an answer right now due to an upstream LLM error. "
-            f"({type(e).__name__})"
+            f"Sorry, I couldn't generate an answer right now. ({type(e).__name__})"
         )
 
-    sources = [
+    # RAG sources
+    rag_sources = [
         {
             "id": c["id"],
             "title": c.get("title"),
@@ -84,4 +131,21 @@ async def generate_answer(query: str, chunks: list[dict], vertical: str) -> dict
         }
         for c in chunks
     ]
-    return {"answer": answer_text, "sources": sources, "vertical": vertical}
+
+    # Web sources
+    live_sources = [
+        {
+            "title": r.get("title", "Web result"),
+            "url": r.get("url", ""),
+            "content": (r["content"][:240] + "…") if len(r["content"]) > 240 else r["content"],
+            "score": r.get("score", 0),
+        }
+        for r in web_results
+    ]
+
+    return {
+        "answer": answer_text,
+        "sources": rag_sources,
+        "web_sources": live_sources,
+        "vertical": vertical,
+    }
