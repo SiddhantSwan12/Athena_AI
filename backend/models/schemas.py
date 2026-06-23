@@ -2,7 +2,18 @@ from datetime import datetime
 from typing import Optional, Literal
 from pydantic import BaseModel, EmailStr, Field
 
-Vertical = Literal["finance", "health", "education"]
+Vertical = Literal[
+    "finance",
+    "health",
+    "education",
+    "technology",
+    "geopolitics",
+    "law",
+    "environment",
+    "business",
+    "sports",
+    "entertainment",
+]
 
 
 # ---------- Auth ----------

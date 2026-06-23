@@ -7,7 +7,11 @@ from services.ingestion import extract_text_from_file, ingest_document
 
 router = APIRouter(prefix="/api/ingest", tags=["ingest"])
 
-ALLOWED_VERTICALS = {"finance", "health", "education"}
+ALLOWED_VERTICALS = {
+    "finance", "health", "education",
+    "technology", "geopolitics", "law",
+    "environment", "business", "sports", "entertainment",
+}
 
 
 @router.post("/file")

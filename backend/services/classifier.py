@@ -22,31 +22,78 @@ _client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KE
 
 _SYSTEM_INSTRUCTION = (
     "You are a query router for Athena.ai. "
-    "Classify the user query into EXACTLY ONE of: finance, health, education. "
+    "Classify the user query into EXACTLY ONE of: "
+    "finance, health, education, technology, geopolitics, law, environment, business, sports, entertainment. "
     "Respond with ONE WORD only — no punctuation, no explanation."
 )
 
-_USER_PROMPT = """Verticals:
-- finance   (investments, tax, budgeting, markets, banking, crypto, economics)
-- health    (medical, symptoms, fitness, nutrition, mental health, drugs, wellness)
-- education (learning, courses, concepts, history, science, math, skills)
+_USER_PROMPT = """Domains:
+- finance      (investments, tax, budgeting, banking, markets, crypto, economics, stock, funds)
+- health       (medicine, symptoms, disease, fitness, nutrition, mental health, drugs, therapy, wellness)
+- education    (learning, courses, science, math, history, concepts, exams, university, skills)
+- technology   (AI, software, hardware, cybersecurity, programming, gadgets, internet, robotics, cloud)
+- geopolitics  (war, diplomacy, sanctions, elections, international relations, treaties, conflict, NATO, UN)
+- law          (legislation, court, rights, contracts, criminal, compliance, regulations, lawsuit, attorney)
+- environment  (climate change, sustainability, pollution, biodiversity, energy, emissions, ecology, deforestation)
+- business     (startups, entrepreneurship, strategy, marketing, supply chain, merger, acquisition, revenue)
+- sports       (game, athlete, tournament, championship, team, score, Olympics, league, match)
+- entertainment (movie, music, celebrity, award, pop culture, TV show, streaming, gaming, concert)
 
 Query: {query}
-Vertical:"""
+Domain:"""
 
 # Keyword fallback — used when the LLM call fails or key is not set.
+# Keywords are intentionally distinct per domain to minimise cross-domain matches.
 _KEYWORD_FALLBACK: dict[str, list[str]] = {
     "finance": [
         "stock", "invest", "tax", "bank", "market", "budget", "money", "crypto",
         "loan", "fund", "etf", "ipo", "interest", "mortgage", "portfolio", "trading",
+        "dividend", "bond", "forex", "inflation", "gdp", "recession",
     ],
     "health": [
         "symptom", "disease", "doctor", "medicine", "diet", "exercise", "mental",
         "vitamin", "hospital", "drug", "therapy", "nutrition", "sleep", "anxiety",
+        "cancer", "diabetes", "vaccine", "surgery", "prescription", "pandemic",
     ],
     "education": [
         "learn", "study", "course", "university", "concept", "explain", "history",
         "science", "math", "physics", "biology", "chemistry", "theorem", "essay",
+        "exam", "degree", "school", "lecture", "curriculum", "scholarship",
+    ],
+    "technology": [
+        "ai", "software", "hardware", "code", "programming", "cyber", "hack",
+        "algorithm", "machine learning", "neural", "cloud", "blockchain", "robot",
+        "app", "startup tech", "gpu", "processor", "database", "api", "devops",
+    ],
+    "geopolitics": [
+        "war", "conflict", "sanction", "treaty", "diplomat", "nato", "un", "election",
+        "president", "government", "military", "invasion", "ceasefire", "refugee",
+        "foreign policy", "geopolit", "alliance", "coup", "protest", "sovereignty",
+    ],
+    "law": [
+        "law", "legal", "court", "judge", "lawyer", "attorney", "lawsuit", "rights",
+        "constitution", "verdict", "regulation", "compliance", "contract", "crime",
+        "arrest", "legislation", "statute", "tribunal", "appeal", "jury",
+    ],
+    "environment": [
+        "climate", "carbon", "emission", "pollution", "renewable", "solar", "wind",
+        "biodiversity", "deforestation", "ocean", "plastic", "recycle", "ecology",
+        "glacier", "drought", "flood", "species", "conservation", "greenhouse",
+    ],
+    "business": [
+        "startup", "entrepreneur", "revenue", "profit", "marketing", "brand", "ceo",
+        "acquisition", "merger", "supply chain", "b2b", "saas", "venture", "pitch",
+        "product launch", "customer", "sales", "strategy", "franchise", "business model",
+    ],
+    "sports": [
+        "sport", "game", "team", "player", "match", "tournament", "champion", "score",
+        "athlete", "olympic", "league", "fifa", "nba", "cricket", "football", "tennis",
+        "coach", "stadium", "transfer", "goal", "wicket", "race",
+    ],
+    "entertainment": [
+        "movie", "film", "music", "album", "celebrity", "actor", "singer", "award",
+        "netflix", "streaming", "concert", "tv show", "gaming", "trailer", "box office",
+        "oscars", "grammy", "pop culture", "series", "episode", "director",
     ],
 }
 
@@ -72,7 +119,11 @@ async def classify_vertical(query: str) -> str:
                 max_tokens=10,         # one word; cap to avoid runaway responses
             )
             result = (response.choices[0].message.content or "").strip().lower()
-            for vertical in ("finance", "health", "education"):
+            for vertical in (
+                "finance", "health", "education",
+                "technology", "geopolitics", "law",
+                "environment", "business", "sports", "entertainment",
+            ):
                 if vertical in result:
                     return vertical
             logger.warning("Classifier returned unexpected output %r — falling back", result)
