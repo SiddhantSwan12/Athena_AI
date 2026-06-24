@@ -1,13 +1,66 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
 import MermaidDiagram from "./MermaidDiagram";
 import { OwlIcon } from "../Icons";
-import { FileAudio } from "lucide-react";
+import { Clock3, FileAudio, Youtube } from "lucide-react";
 
 const remarkPlugins = [remarkGfm];
+const YOUTUBE_SEEK_EVENT = "athena:youtube-seek";
+
+function formatTimestamp(seconds) {
+  const total = Math.max(0, Math.floor(seconds || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remaining = String(total % 60).padStart(2, "0");
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${remaining}`
+    : `${minutes}:${remaining}`;
+}
+
+function YouTubeAttachment({ attachment }) {
+  const videoId = attachment.video_id;
+  const [startSeconds, setStartSeconds] = useState(0);
+
+  useEffect(() => {
+    const seek = (event) => {
+      if (event.detail?.videoId !== videoId) return;
+      setStartSeconds(Math.max(0, Math.floor(event.detail.seconds || 0)));
+    };
+    window.addEventListener(YOUTUBE_SEEK_EVENT, seek);
+    return () => window.removeEventListener(YOUTUBE_SEEK_EVENT, seek);
+  }, [videoId]);
+
+  if (!videoId) return null;
+  const src = `https://www.youtube.com/embed/${videoId}?start=${startSeconds}&autoplay=${
+    startSeconds > 0 ? 1 : 0
+  }&rel=0`;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/20 bg-black">
+      <iframe
+        key={`${videoId}-${startSeconds}`}
+        src={src}
+        title="Attached YouTube video"
+        className="aspect-video w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+      <div className="flex items-center gap-2 px-3 py-2 font-mono text-[10px]">
+        <Youtube className="h-4 w-4 text-white" />
+        <span className="truncate">{attachment.url}</span>
+        {startSeconds > 0 && (
+          <span className="ml-auto shrink-0 opacity-75">
+            {formatTimestamp(startSeconds)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function CodeBlock({ node, inline, className, children, accent, isStreaming, ...props }) {
   const lang = /language-(\w+)/.exec(className || "")?.[1];
@@ -157,6 +210,8 @@ export default function MessageBubble({ message, index }) {
                         </details>
                       )}
                     </div>
+                  ) : attachment.type === "youtube" ? (
+                    <YouTubeAttachment attachment={attachment} />
                   ) : attachment.preview_url ? (
                     <img
                       src={attachment.preview_url}
@@ -214,6 +269,44 @@ export default function MessageBubble({ message, index }) {
             webSources={message.web_sources || []}
             messageVertical={message.vertical}
           />
+        )}
+        {!isUser && message.video?.moments?.length > 0 && (
+          <div
+            className="w-full rounded-lg border border-border bg-surface/70 p-3"
+            data-testid="youtube-moments"
+          >
+            <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-tertiary">
+              <Clock3 className="h-3.5 w-3.5" />
+              Video moments
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {message.video.moments.map((moment, momentIndex) => (
+                <button
+                  key={`${moment.timestamp_seconds}-${momentIndex}`}
+                  type="button"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent(YOUTUBE_SEEK_EVENT, {
+                        detail: {
+                          videoId: message.video.video_id,
+                          seconds: moment.timestamp_seconds,
+                        },
+                      })
+                    )
+                  }
+                  title={moment.observation}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-left text-xs text-secondary transition-colors hover:text-primary"
+                  style={{ borderColor: `${msgAccent}35` }}
+                >
+                  <span className="font-mono" style={{ color: msgAccent }}>
+                    {moment.timestamp ||
+                      formatTimestamp(moment.timestamp_seconds)}
+                  </span>
+                  <span>{moment.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {!isUser && !message.sources?.length && message.web_sources?.length > 0 && (
           <SourceDrawer

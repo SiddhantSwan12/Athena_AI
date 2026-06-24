@@ -43,7 +43,8 @@ export const chatApi = {
   send: (payload) => api.post("/api/chat", payload).then((r) => r.data),
   stream: async (payload, handlers = {}, attachment = null) => {
     const token = localStorage.getItem("athena_token");
-    const formData = attachment ? new FormData() : null;
+    const isYoutube = attachment?.kind === "youtube";
+    const formData = attachment && !isYoutube ? new FormData() : null;
     if (formData) {
       formData.append("query", payload.query || "");
       if (payload.vertical) formData.append("vertical", payload.vertical);
@@ -54,7 +55,9 @@ export const chatApi = {
     }
 
     const endpoint = attachment
-      ? attachment.kind === "audio"
+      ? isYoutube
+        ? "stream-youtube"
+        : attachment.kind === "audio"
         ? "stream-audio"
         : "stream-image"
       : "stream";
@@ -63,10 +66,18 @@ export const chatApi = {
       {
       method: "POST",
       headers: {
-        ...(!attachment ? { "Content-Type": "application/json" } : {}),
+        ...(!attachment || isYoutube
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: formData || JSON.stringify(payload),
+      body:
+        formData ||
+        JSON.stringify(
+          isYoutube
+            ? { ...payload, youtube_url: attachment.url }
+            : payload
+        ),
       }
     );
 

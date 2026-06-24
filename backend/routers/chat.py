@@ -13,6 +13,7 @@ from models.schemas import (
     SourceItem,
     Vertical,
     WebSourceItem,
+    YouTubeChatRequest,
 )
 from services.auth_service import get_current_user
 from services.classifier import classify_vertical
@@ -26,6 +27,11 @@ from services.retriever import retrieve_chunks
 from services.speech import SpeechTranscriptionError, transcribe_audio
 from services.web_search import web_search
 from services.vision import VisionAnalysisError, analyze_image
+from services.youtube import (
+    YouTubeAnalysisError,
+    analyze_youtube_video,
+    parse_youtube_url,
+)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -74,6 +80,15 @@ async def _load_history(conversation_id: str | None, user_id: str) -> list[dict]
                         f"{content}\n\n"
                         f"[Audio attached: {att.get('name', 'audio')}]\n"
                         f"[Audio transcript: {transcript}]"
+                    )
+                if att.get("type") == "youtube" and att.get("video_context"):
+                    video_context = att["video_context"][
+                        :_AUDIO_CONTEXT_HISTORY_LIMIT
+                    ]
+                    content = (
+                        f"{content}\n\n"
+                        f"[YouTube video: {att.get('url', '')}]\n"
+                        f"[Video analysis: {video_context}]"
                     )
         history.append({"role": role, "content": content})
 
@@ -177,6 +192,7 @@ async def _save_conversation(
     web_sources: list[dict],
     conversation_id: str | None,
     attachment: dict | None = None,
+    assistant_metadata: dict | None = None,
 ) -> str:
     now_iso = datetime.now(timezone.utc).isoformat()
     convo_id = conversation_id or str(uuid.uuid4())
@@ -200,6 +216,8 @@ async def _save_conversation(
         "web_sources": web_sources,
         "timestamp": now_iso,
     }
+    if assistant_metadata:
+        assistant_msg.update(assistant_metadata)
 
     if conversation_id:
         await conversations_col.update_one(
@@ -385,6 +403,111 @@ async def _audio_events(
             "transcript": transcript,
             "language_code": language_code,
             "duration_seconds": duration_seconds,
+        },
+    )
+
+
+def _format_video_context(analysis: dict) -> str:
+    lines = [f"Overview: {analysis['overview']}"]
+    for moment in analysis.get("moments", []):
+        timestamp = moment.get("timestamp") or "00:00"
+        lines.append(
+            f"[{timestamp}] {moment.get('label', 'Moment')}: "
+            f"{moment.get('observation', '')}"
+        )
+    for claim in analysis.get("claims", []):
+        timestamp = claim.get("timestamp") or "00:00"
+        lines.append(f"[Claim at {timestamp}] {claim.get('claim', '')}")
+    return "\n".join(lines)
+
+
+async def _youtube_events(
+    *,
+    query: str,
+    youtube: dict[str, str],
+    analysis: dict,
+    vertical: str | None,
+    conversation_id: str | None,
+    current_user: dict,
+    history: list[dict],
+):
+    video_context = _format_video_context(analysis)
+    evidence_query = f"{query}\nYouTube video analysis: {video_context[:2200]}"
+    classified = await classify_vertical(evidence_query)
+    active = vertical or classified
+    generic_queries = {
+        "Analyze this YouTube video.",
+        "Summarize this YouTube video.",
+    }
+    chunks, web_results = await asyncio.gather(
+        retrieve_chunks(evidence_query, active),
+        web_search(query, active)
+        if query not in generic_queries
+        else asyncio.sleep(0, result=[]),
+    )
+
+    sources = format_rag_sources(chunks)
+    web_sources = format_web_sources(web_results)
+    video_meta = {
+        "video_id": youtube["video_id"],
+        "url": youtube["url"],
+        "embed_url": youtube["embed_url"],
+        "overview": analysis["overview"],
+        "language": analysis.get("language", "unknown"),
+        "moments": analysis.get("moments", []),
+        "claims": analysis.get("claims", []),
+    }
+    yield _sse(
+        "meta",
+        {
+            "vertical": active,
+            "classified_vertical": classified,
+            "sources": sources,
+            "web_sources": web_sources,
+            "video": video_meta,
+        },
+    )
+
+    answer_parts: list[str] = []
+    async for text in stream_answer_text(
+        query,
+        chunks,
+        active,
+        web_results,
+        video_context=video_context,
+        history=history,
+    ):
+        answer_parts.append(text)
+        yield _sse("token", {"text": text})
+
+    answer = "".join(answer_parts)
+    attachment = {
+        "type": "youtube",
+        **video_meta,
+        "video_context": video_context,
+    }
+    convo_id = await _save_conversation(
+        current_user=current_user,
+        query=query,
+        answer=answer,
+        active=active,
+        classified=classified,
+        sources=sources,
+        web_sources=web_sources,
+        conversation_id=conversation_id,
+        attachment=attachment,
+        assistant_metadata={"video": video_meta},
+    )
+    yield _sse(
+        "done",
+        {
+            "answer": answer,
+            "vertical": active,
+            "classified_vertical": classified,
+            "sources": sources,
+            "web_sources": web_sources,
+            "conversation_id": convo_id,
+            "video": video_meta,
         },
     )
 
@@ -601,6 +724,37 @@ async def chat_stream_audio(
             duration_seconds=transcription.get("duration_seconds", 0),
             vertical=vertical,
             conversation_id=conversation_id,
+            current_user=current_user,
+            history=history,
+        ),
+        media_type="text/event-stream",
+    )
+
+
+@router.post("/stream-youtube")
+async def chat_stream_youtube(
+    req: YouTubeChatRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    clean_query = req.query.strip() or "Analyze this YouTube video."
+    try:
+        youtube = parse_youtube_url(req.youtube_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        analysis = await analyze_youtube_video(youtube["url"], clean_query)
+    except YouTubeAnalysisError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    history = await _load_history(req.conversation_id, current_user["id"])
+    return StreamingResponse(
+        _youtube_events(
+            query=clean_query,
+            youtube=youtube,
+            analysis=analysis,
+            vertical=req.vertical,
+            conversation_id=req.conversation_id,
             current_user=current_user,
             history=history,
         ),

@@ -14,27 +14,43 @@ export function useChat() {
   const [activeVerticalFromAnswer, setActiveVerticalFromAnswer] = useState(null);
 
   const sendMessage = useCallback(
-    async (query, vertical, image = null, audio = null) => {
+    async (query, vertical, image = null, audio = null, youtube = null) => {
       setError(null);
       const messageText =
         query.trim() ||
-        (audio ? "Analyze this audio recording." : "Analyze this image.");
-      const attachment = image || audio;
-      const attachmentType = audio ? "audio" : "image";
+        (youtube
+          ? "Analyze this YouTube video."
+          : audio
+          ? "Analyze this audio recording."
+          : "Analyze this image.");
+      const attachment = image || audio || youtube;
+      const attachmentType = youtube
+        ? "youtube"
+        : audio
+        ? "audio"
+        : "image";
       const userMessage = {
         id: uuidv4(),
         role: "user",
         content: messageText,
         vertical,
         timestamp: new Date().toISOString(),
-        attachments: attachment?.previewUrl
+        attachments: attachment
           ? [
-              {
-                type: attachmentType,
-                name: attachment.file.name,
-                mime_type: attachment.file.type,
-                preview_url: attachment.previewUrl,
-              },
+              attachmentType === "youtube"
+                ? {
+                    type: "youtube",
+                    video_id: youtube.videoId,
+                    url: youtube.url,
+                    embed_url: youtube.embedUrl,
+                    thumbnail_url: youtube.thumbnailUrl,
+                  }
+                : {
+                    type: attachmentType,
+                    name: attachment.file.name,
+                    mime_type: attachment.file.type,
+                    preview_url: attachment.previewUrl,
+                  },
             ]
           : [],
       };
@@ -100,23 +116,28 @@ export function useChat() {
           {
             onMeta: (data) => {
               setMessages((prev) => {
-                const withTranscript = data.transcript
+                const withMedia = data.transcript || data.video
                   ? prev.map((message) =>
                       message.id === userMessage.id
                         ? {
                             ...message,
                             attachments: message.attachments.map((item) => ({
                               ...item,
-                              transcript: data.transcript,
-                              language_code: data.language_code,
-                              duration_seconds: data.duration_seconds,
+                              ...(data.transcript
+                                ? {
+                                    transcript: data.transcript,
+                                    language_code: data.language_code,
+                                    duration_seconds: data.duration_seconds,
+                                  }
+                                : {}),
+                              ...(data.video || {}),
                             })),
                           }
                         : message
                     )
                   : prev;
                 return [
-                  ...withTranscript,
+                  ...withMedia,
                   {
                   id: assistantId,
                   role: "assistant",
@@ -125,6 +146,7 @@ export function useChat() {
                   classified_vertical: data.classified_vertical,
                   sources: data.sources || [],
                   web_sources: data.web_sources || [],
+                  video: data.video || null,
                   timestamp: new Date().toISOString(),
                   isStreaming: true,
                   },
@@ -136,7 +158,9 @@ export function useChat() {
               queueText(text);
             },
           },
-          attachment
+          attachmentType === "youtube"
+            ? { kind: "youtube", url: youtube.url }
+            : attachment
             ? { kind: attachmentType, file: attachment.file }
             : null
         );
@@ -164,6 +188,7 @@ export function useChat() {
                     finalData?.classified_vertical || m.classified_vertical,
                   sources: finalData?.sources || [],
                   web_sources: finalData?.web_sources || [],
+                  video: finalData?.video || m.video || null,
                   isStreaming: false,
                 }
               : m
@@ -212,6 +237,7 @@ export function useChat() {
         sources: m.sources || [],
         web_sources: m.web_sources || [],
         attachments: m.attachments || [],
+        video: m.video || null,
         timestamp: m.timestamp,
       }))
     );

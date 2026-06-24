@@ -110,3 +110,38 @@ def test_load_history_includes_prior_audio_transcript(monkeypatch):
         "[Audio attached: interview.mp3]\n"
         "[Audio transcript: The speaker discusses renewable energy.]"
     )
+
+
+def test_load_history_includes_prior_youtube_analysis(monkeypatch):
+    fake = FakeConversationsCollection(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Summarize this video.",
+                    "attachments": [
+                        {
+                            "type": "youtube",
+                            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                            "video_context": (
+                                "Overview: A technology explainer.\n"
+                                "[00:20] Main point: The presenter explains an API."
+                            ),
+                        }
+                    ],
+                },
+                {
+                    "role": "assistant",
+                    "content": "The video explains an API.",
+                },
+            ]
+        }
+    )
+    monkeypatch.setattr(chat, "conversations_col", fake)
+
+    history = asyncio.run(chat._load_history("conversation-4", "user-1"))
+
+    assert "[YouTube video: https://www.youtube.com/watch?v=dQw4w9WgXcQ]" in (
+        history[0]["content"]
+    )
+    assert "[00:20] Main point" in history[0]["content"]

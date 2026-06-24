@@ -32,6 +32,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [image, setImage] = useState(null);
   const [audio, setAudio] = useState(null);
+  const [youtube, setYoutube] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
   const scrollRef = useRef(null);
@@ -103,23 +104,27 @@ export default function ChatPage() {
 
   const submit = async () => {
     const q = input.trim();
-    if ((!q && !image && !audio) || isLoading) return;
+    if ((!q && !image && !audio && !youtube) || isLoading) return;
     userScrolledUp.current = false;
     setInput("");
     const submittedImage = image;
     const submittedAudio = audio;
+    const submittedYoutube = youtube;
     setImage(null);
     setAudio(null);
+    setYoutube(null);
     const sent = await sendMessage(
       q,
       vertical || undefined,
       submittedImage,
-      submittedAudio
+      submittedAudio,
+      submittedYoutube
     );
     if (!sent) {
       setInput(q);
       setImage(submittedImage);
       setAudio(submittedAudio);
+      setYoutube(submittedYoutube);
       return;
     }
     setRefreshKey((k) => k + 1);
@@ -127,6 +132,7 @@ export default function ChatPage() {
 
   const handleSelect = async (id) => {
     try {
+      setYoutube(null);
       const c = await convosApi.get(id);
       hydrate(c);
       if (c.vertical && ACCENT_MAP[c.vertical]) setVertical(c.vertical);
@@ -140,6 +146,7 @@ export default function ChatPage() {
     setInput("");
     setImage(null);
     setAudio(null);
+    setYoutube(null);
   };
 
   // Vertical for the accent layer (background flare):
@@ -287,6 +294,8 @@ export default function ChatPage() {
               onImageChange={setImage}
               audio={audio}
               onAudioChange={setAudio}
+              youtube={youtube}
+              onYoutubeChange={setYoutube}
             />
             <p className="text-center text-tertiary text-[11px] font-mono mt-2">
               Enter to send · Shift+Enter for newline · grounded in your documents

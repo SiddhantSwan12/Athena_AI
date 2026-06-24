@@ -48,6 +48,10 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
 
 
+class YouTubeChatRequest(ChatRequest):
+    youtube_url: str = Field(min_length=10, max_length=500)
+
+
 class SourceItem(BaseModel):
     id: str
     content: str

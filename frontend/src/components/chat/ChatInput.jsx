@@ -1,16 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AudioLines,
   FileAudio,
   ImagePlus,
+  Link2,
   Mic,
   Pause,
   Play,
   X,
+  Youtube,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useVertical } from "../../lib/VerticalContext";
 import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
+import { normalizeYouTubeUrl } from "../../lib/youtube";
 
 const IMAGE_TYPES = [
   "image/png",
@@ -43,11 +46,15 @@ export default function ChatInputNew({
   onImageChange,
   audio,
   onAudioChange,
+  youtube,
+  onYoutubeChange,
 }) {
   const { accent } = useVertical();
   const ref = useRef(null);
   const imageInputRef = useRef(null);
   const audioInputRef = useRef(null);
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+  const [youtubeDraft, setYoutubeDraft] = useState("");
   const {
     status: speechStatus,
     error: speechError,
@@ -83,7 +90,9 @@ export default function ChatInputNew({
   const speechUnavailable = speechStatus === "unsupported";
   const speechActive = isListening || isPaused || isSpeechBusy;
   const disabled =
-    isLoading || speechActive || (!value.trim() && !image && !audio);
+    isLoading ||
+    speechActive ||
+    (!value.trim() && !image && !audio && !youtube);
   const speechLabel = isListening || isPaused
     ? "Stop voice input"
     : isSpeechBusy
@@ -131,6 +140,16 @@ export default function ChatInputNew({
       file,
       previewUrl: URL.createObjectURL(file),
     });
+  };
+
+  const attachYoutube = () => {
+    try {
+      onYoutubeChange(normalizeYouTubeUrl(youtubeDraft));
+      setYoutubeDraft("");
+      setShowYoutubeInput(false);
+    } catch (error) {
+      toast.error(error?.message || "Use a valid YouTube URL");
+    }
   };
 
   return (
@@ -193,6 +212,89 @@ export default function ChatInputNew({
           </button>
         </div>
       )}
+      {youtube && (
+        <div
+          className="mb-2 overflow-hidden rounded-lg border border-border bg-surface"
+          data-testid="chat-youtube-preview"
+        >
+          <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
+            <img
+              src={youtube.thumbnailUrl}
+              alt=""
+              className="aspect-video w-full rounded-md border border-border object-cover"
+            />
+            <div className="min-w-0">
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-xs text-primary">
+                    <Youtube className="h-4 w-4 text-red-500" />
+                    <span>YouTube video</span>
+                  </div>
+                  <p className="mt-1 truncate font-mono text-[10px] text-tertiary">
+                    {youtube.url}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onYoutubeChange(null);
+                  }}
+                  aria-label="Remove YouTube video"
+                  title="Remove YouTube video"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-tertiary transition-colors hover:bg-muted/40 hover:text-primary"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-2 font-mono text-[10px] text-tertiary">
+                Public videos only · audio and visuals analyzed together
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {showYoutubeInput && !youtube && (
+        <div className="mb-2 flex gap-2 rounded-lg border border-border bg-surface p-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center text-red-500">
+            <Youtube className="h-5 w-5" />
+          </div>
+          <input
+            type="url"
+            value={youtubeDraft}
+            onChange={(event) => setYoutubeDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                attachYoutube();
+              }
+              if (event.key === "Escape") setShowYoutubeInput(false);
+            }}
+            autoFocus
+            placeholder="Paste a YouTube video or Shorts URL"
+            className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-tertiary"
+            data-testid="chat-youtube-url-input"
+          />
+          <button
+            type="button"
+            onClick={attachYoutube}
+            className="h-9 rounded-lg px-3 text-xs text-white"
+            style={{ background: accent }}
+          >
+            Attach
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setYoutubeDraft("");
+              setShowYoutubeInput(false);
+            }}
+            aria-label="Cancel YouTube link"
+            className="flex h-9 w-9 items-center justify-center text-tertiary hover:text-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div
         className="flex items-end gap-2 p-3 rounded-2xl border bg-surface transition-all duration-300"
@@ -223,9 +325,13 @@ export default function ChatInputNew({
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
-          disabled={Boolean(image || audio) || speechActive || isLoading}
+          disabled={Boolean(image || audio || youtube) || speechActive || isLoading}
           aria-label="Attach image"
-          title={image ? "Remove the current image before attaching another" : "Attach image"}
+          title={
+            image || audio || youtube
+              ? "Remove the current attachment before adding an image"
+              : "Attach image"
+          }
           data-testid="chat-image-btn"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-tertiary transition-colors hover:border-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -243,10 +349,10 @@ export default function ChatInputNew({
         <button
           type="button"
           onClick={() => audioInputRef.current?.click()}
-          disabled={Boolean(image || audio) || speechActive || isLoading}
+          disabled={Boolean(image || audio || youtube) || speechActive || isLoading}
           aria-label="Attach audio"
           title={
-            audio || image
+            audio || image || youtube
               ? "Remove the current attachment before adding audio"
               : "Attach audio"
           }
@@ -254,6 +360,22 @@ export default function ChatInputNew({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-tertiary transition-colors hover:border-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FileAudio className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowYoutubeInput((current) => !current)}
+          disabled={Boolean(image || audio || youtube) || speechActive || isLoading}
+          aria-label="Attach YouTube video"
+          title={
+            image || audio || youtube
+              ? "Remove the current attachment before adding a YouTube video"
+              : "Attach YouTube video"
+          }
+          data-testid="chat-youtube-btn"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-tertiary transition-colors hover:border-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Link2 className="h-4 w-4" />
         </button>
 
         {(isListening || isPaused) && (
