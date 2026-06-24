@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   AudioLines,
+  FileAudio,
   ImagePlus,
   Mic,
   Pause,
@@ -19,6 +20,19 @@ const IMAGE_TYPES = [
   "image/heif",
 ];
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const AUDIO_TYPES = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/mp4",
+  "audio/m4a",
+  "audio/x-m4a",
+  "audio/webm",
+  "audio/ogg",
+  "audio/aac",
+];
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
 export default function ChatInputNew({
   value,
@@ -27,10 +41,13 @@ export default function ChatInputNew({
   isLoading,
   image,
   onImageChange,
+  audio,
+  onAudioChange,
 }) {
   const { accent } = useVertical();
   const ref = useRef(null);
   const imageInputRef = useRef(null);
+  const audioInputRef = useRef(null);
   const {
     status: speechStatus,
     error: speechError,
@@ -65,7 +82,8 @@ export default function ChatInputNew({
 
   const speechUnavailable = speechStatus === "unsupported";
   const speechActive = isListening || isPaused || isSpeechBusy;
-  const disabled = isLoading || speechActive || (!value.trim() && !image);
+  const disabled =
+    isLoading || speechActive || (!value.trim() && !image && !audio);
   const speechLabel = isListening || isPaused
     ? "Stop voice input"
     : isSpeechBusy
@@ -96,6 +114,25 @@ export default function ChatInputNew({
     reader.readAsDataURL(file);
   };
 
+  const selectAudio = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!AUDIO_TYPES.includes(file.type)) {
+      toast.error("Use an MP3, WAV, M4A, WebM, OGG, or AAC audio file");
+      return;
+    }
+    if (file.size > MAX_AUDIO_BYTES) {
+      toast.error("Audio must be 4 MB or smaller");
+      return;
+    }
+
+    onAudioChange({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    });
+  };
+
   return (
     <div className="relative">
       {image && (
@@ -119,6 +156,37 @@ export default function ChatInputNew({
             onClick={() => onImageChange(null)}
             aria-label="Remove attached image"
             title="Remove attached image"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-tertiary transition-colors hover:bg-muted/40 hover:text-primary"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+      {audio && (
+        <div
+          className="mb-2 flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+          data-testid="chat-audio-preview"
+        >
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border"
+            style={{ color: accent, background: `${accent}12` }}
+          >
+            <FileAudio className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs text-primary">{audio.file.name}</p>
+            <p className="font-mono text-[10px] text-tertiary">
+              {(audio.file.size / 1024 / 1024).toFixed(2)} MB · audio
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              URL.revokeObjectURL(audio.previewUrl);
+              onAudioChange(null);
+            }}
+            aria-label="Remove attached audio"
+            title="Remove attached audio"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-tertiary transition-colors hover:bg-muted/40 hover:text-primary"
           >
             <X className="h-4 w-4" />
@@ -155,13 +223,37 @@ export default function ChatInputNew({
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
-          disabled={Boolean(image) || speechActive || isLoading}
+          disabled={Boolean(image || audio) || speechActive || isLoading}
           aria-label="Attach image"
           title={image ? "Remove the current image before attaching another" : "Attach image"}
           data-testid="chat-image-btn"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-tertiary transition-colors hover:border-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ImagePlus className="h-4 w-4" />
+        </button>
+
+        <input
+          ref={audioInputRef}
+          type="file"
+          accept={AUDIO_TYPES.join(",")}
+          onChange={selectAudio}
+          className="sr-only"
+          data-testid="chat-audio-input"
+        />
+        <button
+          type="button"
+          onClick={() => audioInputRef.current?.click()}
+          disabled={Boolean(image || audio) || speechActive || isLoading}
+          aria-label="Attach audio"
+          title={
+            audio || image
+              ? "Remove the current attachment before adding audio"
+              : "Attach audio"
+          }
+          data-testid="chat-audio-btn"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-tertiary transition-colors hover:border-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <FileAudio className="h-4 w-4" />
         </button>
 
         {(isListening || isPaused) && (

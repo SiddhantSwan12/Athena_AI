@@ -41,24 +41,29 @@ export const speechApi = {
 
 export const chatApi = {
   send: (payload) => api.post("/api/chat", payload).then((r) => r.data),
-  stream: async (payload, handlers = {}, image = null) => {
+  stream: async (payload, handlers = {}, attachment = null) => {
     const token = localStorage.getItem("athena_token");
-    const formData = image ? new FormData() : null;
+    const formData = attachment ? new FormData() : null;
     if (formData) {
       formData.append("query", payload.query || "");
       if (payload.vertical) formData.append("vertical", payload.vertical);
       if (payload.conversation_id) {
         formData.append("conversation_id", payload.conversation_id);
       }
-      formData.append("image", image);
+      formData.append(attachment.kind, attachment.file);
     }
 
+    const endpoint = attachment
+      ? attachment.kind === "audio"
+        ? "stream-audio"
+        : "stream-image"
+      : "stream";
     const res = await fetch(
-      `${BASE}/api/chat/${image ? "stream-image" : "stream"}`,
+      `${BASE}/api/chat/${endpoint}`,
       {
       method: "POST",
       headers: {
-        ...(!image ? { "Content-Type": "application/json" } : {}),
+        ...(!attachment ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData || JSON.stringify(payload),

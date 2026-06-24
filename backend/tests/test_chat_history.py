@@ -77,3 +77,36 @@ def test_load_history_merges_consecutive_roles_and_starts_with_user(monkeypatch)
         {"role": "user", "content": "first\n\nsecond"},
         {"role": "assistant", "content": "answer"},
     ]
+
+
+def test_load_history_includes_prior_audio_transcript(monkeypatch):
+    fake = FakeConversationsCollection(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Summarize this recording.",
+                    "attachments": [
+                        {
+                            "type": "audio",
+                            "name": "interview.mp3",
+                            "transcript": "The speaker discusses renewable energy.",
+                        }
+                    ],
+                },
+                {
+                    "role": "assistant",
+                    "content": "The recording discusses renewable energy.",
+                },
+            ]
+        }
+    )
+    monkeypatch.setattr(chat, "conversations_col", fake)
+
+    history = asyncio.run(chat._load_history("conversation-3", "user-1"))
+
+    assert history[0]["content"] == (
+        "Summarize this recording.\n\n"
+        "[Audio attached: interview.mp3]\n"
+        "[Audio transcript: The speaker discusses renewable energy.]"
+    )

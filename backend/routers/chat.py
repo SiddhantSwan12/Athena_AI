@@ -23,13 +23,16 @@ from services.generator import (
     stream_answer_text,
 )
 from services.retriever import retrieve_chunks
+from services.speech import SpeechTranscriptionError, transcribe_audio
 from services.web_search import web_search
 from services.vision import VisionAnalysisError, analyze_image
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_AUDIO_BYTES = 4 * 1024 * 1024
 _HISTORY_LIMIT = 20  # last N messages (~10 turns) sent to Claude
 _VISUAL_CONTEXT_HISTORY_LIMIT = 3000
+_AUDIO_CONTEXT_HISTORY_LIMIT = 6000
 
 
 async def _load_history(conversation_id: str | None, user_id: str) -> list[dict]:
@@ -65,6 +68,13 @@ async def _load_history(conversation_id: str | None, user_id: str) -> list[dict]
                         f"[Image attached: {att.get('name', 'image')}]\n"
                         f"[Image analysis: {visual_context}]"
                     )
+                if att.get("type") == "audio" and att.get("transcript"):
+                    transcript = att["transcript"][:_AUDIO_CONTEXT_HISTORY_LIMIT]
+                    content = (
+                        f"{content}\n\n"
+                        f"[Audio attached: {att.get('name', 'audio')}]\n"
+                        f"[Audio transcript: {transcript}]"
+                    )
         history.append({"role": role, "content": content})
 
     # Anthropic requires alternating turns starting with "user"
@@ -87,6 +97,18 @@ SUPPORTED_IMAGE_TYPES = {
     "image/heic",
     "image/heif",
 }
+SUPPORTED_AUDIO_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/webm",
+    "audio/ogg",
+    "audio/aac",
+}
 
 
 def _matches_image_signature(image_bytes: bytes, image_type: str) -> bool:
@@ -108,6 +130,34 @@ def _matches_image_signature(image_bytes: bytes, image_type: str) -> bool:
         heif_brands = {b"mif1", b"msf1", b"heif"}
         return brand in (
             heic_brands if image_type == "image/heic" else heif_brands
+        )
+    return False
+
+
+def _matches_audio_signature(audio_bytes: bytes, audio_type: str) -> bool:
+    if audio_type in {"audio/mpeg", "audio/mp3"}:
+        return audio_bytes.startswith(b"ID3") or (
+            len(audio_bytes) >= 2
+            and audio_bytes[0] == 0xFF
+            and audio_bytes[1] & 0xE0 == 0xE0
+        )
+    if audio_type in {"audio/wav", "audio/x-wav"}:
+        return (
+            len(audio_bytes) >= 12
+            and audio_bytes[:4] == b"RIFF"
+            and audio_bytes[8:12] == b"WAVE"
+        )
+    if audio_type in {"audio/mp4", "audio/m4a", "audio/x-m4a"}:
+        return len(audio_bytes) >= 12 and audio_bytes[4:8] == b"ftyp"
+    if audio_type == "audio/webm":
+        return audio_bytes.startswith(b"\x1a\x45\xdf\xa3")
+    if audio_type == "audio/ogg":
+        return audio_bytes.startswith(b"OggS")
+    if audio_type == "audio/aac":
+        return (
+            len(audio_bytes) >= 2
+            and audio_bytes[0] == 0xFF
+            and audio_bytes[1] & 0xF6 in {0xF0, 0xF2}
         )
     return False
 
@@ -249,6 +299,92 @@ async def _image_events(
             "sources": sources,
             "web_sources": web_sources,
             "conversation_id": convo_id,
+        },
+    )
+
+
+async def _audio_events(
+    *,
+    query: str,
+    transcript: str,
+    audio_name: str,
+    audio_type: str,
+    language_code: str | None,
+    duration_seconds: float,
+    vertical: str | None,
+    conversation_id: str | None,
+    current_user: dict,
+    history: list[dict],
+):
+    evidence_query = f"{query}\nAudio transcript: {transcript[:1800]}"
+    classified = await classify_vertical(evidence_query)
+    active = vertical or classified
+    chunks, web_results = await asyncio.gather(
+        retrieve_chunks(evidence_query, active),
+        web_search(query, active)
+        if query != "Analyze this audio recording."
+        else asyncio.sleep(0, result=[]),
+    )
+
+    sources = format_rag_sources(chunks)
+    web_sources = format_web_sources(web_results)
+    yield _sse(
+        "meta",
+        {
+            "vertical": active,
+            "classified_vertical": classified,
+            "sources": sources,
+            "web_sources": web_sources,
+            "transcript": transcript,
+            "language_code": language_code,
+            "duration_seconds": duration_seconds,
+        },
+    )
+
+    answer_parts: list[str] = []
+    async for text in stream_answer_text(
+        query,
+        chunks,
+        active,
+        web_results,
+        audio_context=transcript,
+        history=history,
+    ):
+        answer_parts.append(text)
+        yield _sse("token", {"text": text})
+
+    answer = "".join(answer_parts)
+    attachment = {
+        "type": "audio",
+        "name": audio_name,
+        "mime_type": audio_type,
+        "transcript": transcript,
+        "language_code": language_code,
+        "duration_seconds": duration_seconds,
+    }
+    convo_id = await _save_conversation(
+        current_user=current_user,
+        query=query,
+        answer=answer,
+        active=active,
+        classified=classified,
+        sources=sources,
+        web_sources=web_sources,
+        conversation_id=conversation_id,
+        attachment=attachment,
+    )
+    yield _sse(
+        "done",
+        {
+            "answer": answer,
+            "vertical": active,
+            "classified_vertical": classified,
+            "sources": sources,
+            "web_sources": web_sources,
+            "conversation_id": convo_id,
+            "transcript": transcript,
+            "language_code": language_code,
+            "duration_seconds": duration_seconds,
         },
     )
 
@@ -401,6 +537,68 @@ async def chat_stream_image(
             visual_context=visual_context,
             image_name=(image.filename or "image")[:200],
             image_type=image_type,
+            vertical=vertical,
+            conversation_id=conversation_id,
+            current_user=current_user,
+            history=history,
+        ),
+        media_type="text/event-stream",
+    )
+
+
+@router.post("/stream-audio")
+async def chat_stream_audio(
+    query: str = Form(""),
+    vertical: Vertical | None = Form(None),
+    conversation_id: str | None = Form(None),
+    audio: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    clean_query = query.strip() or "Analyze this audio recording."
+    if len(clean_query) > 4000:
+        raise HTTPException(status_code=400, detail="Query is too long")
+
+    audio_type = (audio.content_type or "").lower()
+    if audio_type not in SUPPORTED_AUDIO_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported audio type. Use MP3, WAV, M4A, WebM, OGG, or AAC.",
+        )
+
+    audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
+    await audio.close()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Audio file is empty")
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Audio must be 4 MB or smaller for this deployment",
+        )
+    if not _matches_audio_signature(audio_bytes, audio_type):
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file does not match its declared audio type",
+        )
+
+    audio_name = (audio.filename or "audio")[:200]
+    try:
+        transcription = await transcribe_audio(
+            audio_bytes,
+            audio_name,
+            audio_type,
+        )
+    except SpeechTranscriptionError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    history = await _load_history(conversation_id, current_user["id"])
+    return StreamingResponse(
+        _audio_events(
+            query=clean_query,
+            transcript=transcription["text"],
+            audio_name=audio_name,
+            audio_type=audio_type,
+            language_code=transcription.get("language_code"),
+            duration_seconds=transcription.get("duration_seconds", 0),
             vertical=vertical,
             conversation_id=conversation_id,
             current_user=current_user,

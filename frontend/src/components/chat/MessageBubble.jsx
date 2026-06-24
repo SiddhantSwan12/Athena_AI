@@ -5,6 +5,7 @@ import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
 import MermaidDiagram from "./MermaidDiagram";
 import { OwlIcon } from "../Icons";
+import { FileAudio } from "lucide-react";
 
 const remarkPlugins = [remarkGfm];
 
@@ -116,10 +117,47 @@ export default function MessageBubble({ message, index }) {
             <div className="space-y-2">
               {message.attachments?.map((attachment, attachmentIndex) => (
                 <div
-                  key={`${attachment.name || "image"}-${attachmentIndex}`}
+                  key={`${attachment.name || attachment.type}-${attachmentIndex}`}
                   className="overflow-hidden rounded-lg border border-white/20 bg-black/15"
                 >
-                  {attachment.preview_url ? (
+                  {attachment.type === "audio" ? (
+                    <div className="space-y-2 px-3 py-2.5">
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <FileAudio className="h-4 w-4 shrink-0" />
+                        <span className="truncate">
+                          {attachment.name || "audio attachment"}
+                        </span>
+                        {attachment.duration_seconds > 0 && (
+                          <span className="shrink-0 opacity-70">
+                            {Math.floor(attachment.duration_seconds / 60)}:
+                            {String(
+                              Math.round(attachment.duration_seconds % 60)
+                            ).padStart(2, "0")}
+                          </span>
+                        )}
+                      </div>
+                      {attachment.preview_url && (
+                        <audio
+                          controls
+                          preload="metadata"
+                          src={attachment.preview_url}
+                          className="h-8 w-full max-w-sm"
+                        >
+                          <track kind="captions" />
+                        </audio>
+                      )}
+                      {attachment.transcript && (
+                        <details className="text-left">
+                          <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.16em] opacity-75">
+                            View transcript
+                          </summary>
+                          <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap border-t border-white/15 pt-2 text-xs leading-relaxed">
+                            {attachment.transcript}
+                          </p>
+                        </details>
+                      )}
+                    </div>
+                  ) : attachment.preview_url ? (
                     <img
                       src={attachment.preview_url}
                       alt={attachment.name || "Attached image"}

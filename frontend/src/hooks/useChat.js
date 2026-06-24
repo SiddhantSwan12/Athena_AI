@@ -14,22 +14,26 @@ export function useChat() {
   const [activeVerticalFromAnswer, setActiveVerticalFromAnswer] = useState(null);
 
   const sendMessage = useCallback(
-    async (query, vertical, image = null) => {
+    async (query, vertical, image = null, audio = null) => {
       setError(null);
-      const messageText = query.trim() || "Analyze this image.";
+      const messageText =
+        query.trim() ||
+        (audio ? "Analyze this audio recording." : "Analyze this image.");
+      const attachment = image || audio;
+      const attachmentType = audio ? "audio" : "image";
       const userMessage = {
         id: uuidv4(),
         role: "user",
         content: messageText,
         vertical,
         timestamp: new Date().toISOString(),
-        attachments: image?.previewUrl
+        attachments: attachment?.previewUrl
           ? [
               {
-                type: "image",
-                name: image.file.name,
-                mime_type: image.file.type,
-                preview_url: image.previewUrl,
+                type: attachmentType,
+                name: attachment.file.name,
+                mime_type: attachment.file.type,
+                preview_url: attachment.previewUrl,
               },
             ]
           : [],
@@ -95,9 +99,25 @@ export function useChat() {
           },
           {
             onMeta: (data) => {
-              setMessages((prev) => [
-                ...prev,
-                {
+              setMessages((prev) => {
+                const withTranscript = data.transcript
+                  ? prev.map((message) =>
+                      message.id === userMessage.id
+                        ? {
+                            ...message,
+                            attachments: message.attachments.map((item) => ({
+                              ...item,
+                              transcript: data.transcript,
+                              language_code: data.language_code,
+                              duration_seconds: data.duration_seconds,
+                            })),
+                          }
+                        : message
+                    )
+                  : prev;
+                return [
+                  ...withTranscript,
+                  {
                   id: assistantId,
                   role: "assistant",
                   content: "",
@@ -107,15 +127,18 @@ export function useChat() {
                   web_sources: data.web_sources || [],
                   timestamp: new Date().toISOString(),
                   isStreaming: true,
-                },
-              ]);
+                  },
+                ];
+              });
               setActiveVerticalFromAnswer(data.vertical);
             },
             onToken: ({ text }) => {
               queueText(text);
             },
           },
-          image?.file || null
+          attachment
+            ? { kind: attachmentType, file: attachment.file }
+            : null
         );
 
         const finalAnswer = finalData?.answer || displayedContent + pendingContent;

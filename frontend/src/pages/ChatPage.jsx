@@ -31,6 +31,7 @@ export default function ChatPage() {
   const { messages, isLoading, error, sendMessage, reset, hydrate, conversationId, activeVerticalFromAnswer } = useChat();
   const [input, setInput] = useState("");
   const [image, setImage] = useState(null);
+  const [audio, setAudio] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
   const scrollRef = useRef(null);
@@ -102,15 +103,23 @@ export default function ChatPage() {
 
   const submit = async () => {
     const q = input.trim();
-    if ((!q && !image) || isLoading) return;
+    if ((!q && !image && !audio) || isLoading) return;
     userScrolledUp.current = false;
     setInput("");
     const submittedImage = image;
+    const submittedAudio = audio;
     setImage(null);
-    const sent = await sendMessage(q, vertical || undefined, submittedImage);
+    setAudio(null);
+    const sent = await sendMessage(
+      q,
+      vertical || undefined,
+      submittedImage,
+      submittedAudio
+    );
     if (!sent) {
       setInput(q);
       setImage(submittedImage);
+      setAudio(submittedAudio);
       return;
     }
     setRefreshKey((k) => k + 1);
@@ -130,6 +139,7 @@ export default function ChatPage() {
     reset();
     setInput("");
     setImage(null);
+    setAudio(null);
   };
 
   // Vertical for the accent layer (background flare):
@@ -275,6 +285,8 @@ export default function ChatPage() {
               isLoading={isLoading}
               image={image}
               onImageChange={setImage}
+              audio={audio}
+              onAudioChange={setAudio}
             />
             <p className="text-center text-tertiary text-[11px] font-mono mt-2">
               Enter to send · Shift+Enter for newline · grounded in your documents

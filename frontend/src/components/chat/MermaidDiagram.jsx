@@ -3,13 +3,23 @@ import { useEffect, useState } from "react";
 let _mermaid = null;
 let _diagId = 0;
 
+function cleanDiagramCode(code) {
+  return code
+    .trim()
+    .replace(/^```mermaid\s*/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
+}
+
 async function getMermaid() {
   if (!_mermaid) {
     const mod = await import("mermaid");
     _mermaid = mod.default;
     _mermaid.initialize({
       startOnLoad: false,
+      securityLevel: "loose",
       theme: "neutral",
+      logLevel: "error",
       themeVariables: {
         fontFamily: "Inter Tight, Inter, system-ui, sans-serif",
         fontSize: "13px",
@@ -32,25 +42,56 @@ export default function MermaidDiagram({ code, accent }) {
   useEffect(() => {
     let cancelled = false;
     const id = `mermaid-${++_diagId}`;
+    const clean = cleanDiagramCode(code);
+    const sandbox = document.createElement("div");
+    sandbox.setAttribute("aria-hidden", "true");
+    sandbox.style.cssText =
+      "position:fixed;left:-10000px;top:0;width:1000px;visibility:hidden;pointer-events:none;";
+    document.body.appendChild(sandbox);
+
+    setSvg("");
+    setError(null);
+
     getMermaid()
-      .then((m) => m.render(id, code.trim()))
+      .then(async (m) => {
+        const isValid = await m.parse(clean, { suppressErrors: true });
+        if (!isValid) {
+          throw new Error("Athena returned invalid Mermaid syntax");
+        }
+        return m.render(id, clean, sandbox);
+      })
       .then(({ svg: rendered }) => {
         if (!cancelled) setSvg(rendered);
       })
       .catch((e) => {
         if (!cancelled) setError(e?.message || "Could not render diagram");
+      })
+      .finally(() => {
+        sandbox.remove();
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      sandbox.remove();
+    };
   }, [code]);
 
   if (error) {
     return (
-      <pre
-        className="text-xs p-3 rounded-lg border overflow-x-auto my-3"
-        style={{ color: "#cc3333", background: "rgba(255,0,0,0.04)", borderColor: "rgba(255,0,0,0.15)" }}
+      <div
+        className="my-3 rounded-lg border p-3"
+        style={{
+          color: accentColor,
+          background: `${accentColor}08`,
+          borderColor: `${accentColor}25`,
+        }}
       >
-        {code}
-      </pre>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em]">
+          Diagram preview unavailable
+        </p>
+        <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs text-secondary">
+          {cleanDiagramCode(code)}
+        </pre>
+      </div>
     );
   }
 
