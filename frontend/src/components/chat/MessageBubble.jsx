@@ -1,22 +1,81 @@
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
+import MermaidDiagram from "./MermaidDiagram";
 import { OwlIcon } from "../Icons";
+
+const remarkPlugins = [remarkGfm];
+
+function CodeBlock({ node, inline, className, children, accent, isStreaming, ...props }) {
+  const lang = /language-(\w+)/.exec(className || "")?.[1];
+  const code = String(children).replace(/\n$/, "");
+
+  if (!inline && lang === "mermaid") {
+    if (isStreaming) {
+      return (
+        <div
+          className="flex items-center gap-2 p-3 rounded-xl border my-3 font-mono text-xs"
+          style={{ borderColor: `${accent}30`, color: accent, background: "rgba(0,0,0,0.25)" }}
+        >
+          <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: accent }} />
+          diagram will render when complete…
+        </div>
+      );
+    }
+    return <MermaidDiagram code={code} accent={accent} />;
+  }
+
+  if (!inline) {
+    return (
+      <pre className="prose-athena-pre" {...props}>
+        <code className={className}>{children}</code>
+      </pre>
+    );
+  }
+
+  return (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+}
 
 export default function MessageBubble({ message, index }) {
   const isUser = message.role === "user";
   const { accent: ctxAccent } = useVertical();
-  // Each assistant message remembers its own vertical accent (auto-route may differ from current UI vertical)
-  const msgAccent = message.vertical && ACCENT_MAP[message.vertical]
-    ? ACCENT_MAP[message.vertical].accent
-    : ctxAccent;
+  const msgAccent =
+    message.vertical && ACCENT_MAP[message.vertical]
+      ? ACCENT_MAP[message.vertical].accent
+      : ctxAccent;
 
   const ts = (() => {
     try {
-      return new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    } catch { return ""; }
+      return new Date(message.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
   })();
+
+  const components = {
+    code: (props) => (
+      <CodeBlock {...props} accent={msgAccent} isStreaming={message.isStreaming} />
+    ),
+    table: ({ children }) => (
+      <div className="overflow-x-auto my-3">
+        <table className="athena-table">{children}</table>
+      </div>
+    ),
+    thead: ({ children }) => <thead className="athena-thead">{children}</thead>,
+    tbody: ({ children }) => <tbody>{children}</tbody>,
+    tr: ({ children }) => <tr className="athena-tr">{children}</tr>,
+    th: ({ children }) => <th className="athena-th">{children}</th>,
+    td: ({ children }) => <td className="athena-td">{children}</td>,
+  };
 
   return (
     <motion.div
@@ -36,7 +95,11 @@ export default function MessageBubble({ message, index }) {
         </div>
       )}
 
-      <div className={`flex flex-col gap-2 max-w-[78%] min-w-0 ${isUser ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex flex-col gap-2 max-w-[78%] min-w-0 ${
+          isUser ? "items-end" : "items-start"
+        }`}
+      >
         <div
           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed break-words ${
             isUser
@@ -53,7 +116,12 @@ export default function MessageBubble({ message, index }) {
             <span>{message.content}</span>
           ) : (
             <div className="prose-athena">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={remarkPlugins}
+                components={components}
+              >
+                {message.content}
+              </ReactMarkdown>
               {message.isStreaming && (
                 <motion.span
                   aria-hidden
@@ -69,14 +137,16 @@ export default function MessageBubble({ message, index }) {
 
         <div className="flex items-center gap-2 px-1 text-[10px] font-mono">
           {message.vertical && (
-            <span style={{ color: msgAccent }}>{labelFor(message.vertical).toLowerCase()}</span>
+            <span style={{ color: msgAccent }}>
+              {labelFor(message.vertical).toLowerCase()}
+            </span>
           )}
           {message.classified_vertical &&
             message.vertical !== message.classified_vertical && (
               <span className="text-tertiary">
                 · auto-routed from {labelFor(message.classified_vertical).toLowerCase()}
               </span>
-          )}
+            )}
           <span className="text-tertiary">· {ts}</span>
         </div>
 

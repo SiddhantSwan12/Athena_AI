@@ -34,6 +34,14 @@ RULES:
 4. Be concise and factual. Do NOT invent information not present in the context.
 5. If sources conflict, state the conflict explicitly and note which is more recent.
 
+FORMATTING — follow these rules for every response:
+- Use **bold** for key terms, thresholds, and critical facts.
+- Use markdown tables (| col | col |) when comparing items, listing structured metrics, or showing multi-field data — never use plain-text grids.
+- When the user asks to explain a diagram, flowchart, architecture, process, pipeline, or any visual structure: respond with a mermaid code block (```mermaid) and nothing else for the visual part. Use flowchart TD for top-down flows, sequenceDiagram for sequences, classDiagram for class/entity structures. Do NOT describe diagrams in plain text — render them.
+- Use ## or ### headers to break long answers into named sections.
+- Use bullet lists for enumerations of 3 or more items.
+- Keep prose concise; avoid filler phrases.
+
 {context}"""
 
 
