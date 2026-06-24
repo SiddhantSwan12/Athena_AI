@@ -34,18 +34,36 @@ export const authApi = {
   me: () => api.get("/api/auth/me").then((r) => r.data),
 };
 
+export const speechApi = {
+  realtimeToken: () =>
+    api.post("/api/speech/realtime-token").then((r) => r.data),
+};
+
 export const chatApi = {
   send: (payload) => api.post("/api/chat", payload).then((r) => r.data),
-  stream: async (payload, handlers = {}) => {
+  stream: async (payload, handlers = {}, image = null) => {
     const token = localStorage.getItem("athena_token");
-    const res = await fetch(`${BASE}/api/chat/stream`, {
+    const formData = image ? new FormData() : null;
+    if (formData) {
+      formData.append("query", payload.query || "");
+      if (payload.vertical) formData.append("vertical", payload.vertical);
+      if (payload.conversation_id) {
+        formData.append("conversation_id", payload.conversation_id);
+      }
+      formData.append("image", image);
+    }
+
+    const res = await fetch(
+      `${BASE}/api/chat/${image ? "stream-image" : "stream"}`,
+      {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        ...(!image ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(payload),
-    });
+      body: formData || JSON.stringify(payload),
+      }
+    );
 
     if (res.status === 401) {
       localStorage.removeItem("athena_token");
@@ -98,6 +116,9 @@ export const chatApi = {
     }
 
     if (buffer.trim()) dispatch(buffer);
+    if (!finalData) {
+      throw new Error("The response stream ended before Athena finished");
+    }
     return finalData;
   },
 };

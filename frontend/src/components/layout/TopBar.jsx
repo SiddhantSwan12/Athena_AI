@@ -58,9 +58,16 @@ export default function TopBar({ onClear, showSwitcher = true, rightSlot }) {
         <button
           onClick={toggleTheme}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          className="flex items-center justify-center w-7 h-7 rounded-lg border border-border text-tertiary hover:text-secondary hover:border-muted transition-colors bg-surface"
+          className="flex items-center justify-center w-7 h-7 rounded-lg border border-border text-tertiary hover:text-secondary hover:border-muted transition-colors bg-surface overflow-hidden"
         >
-          {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          <motion.span
+            key={theme}
+            initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+            animate={{ opacity: 1, rotate: 0, scale: 1 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </motion.span>
         </button>
         {onClear && (
           <button

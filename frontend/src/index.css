@@ -71,6 +71,15 @@ body {
 
 html { scroll-behavior: smooth; }
 
+/* Applied briefly by ThemeContext so the whole palette changes as one surface. */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 360ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* ─── TYPOGRAPHY ──────────────────────────────────────────────────── */
 .font-display {
   font-family: var(--font-display);

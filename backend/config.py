@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     OPENAI_API_KEY: str = ""  # Used by classifier; leave empty to fall back to keyword matching
     TAVILY_API_KEY: str = ""  # Used for real-time web search; leave empty to disable web search
+    ELEVENLABS_API_KEY: str = ""  # Used to mint short-lived Scribe realtime tokens
     CORS_ORIGINS: str = "*"
     CHUNK_SIZE: int = 900
     CHUNK_OVERLAP: int = 120

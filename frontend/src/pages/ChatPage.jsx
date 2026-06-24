@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -30,11 +30,15 @@ export default function ChatPage() {
   const { vertical, setVertical, accent } = useVertical();
   const { messages, isLoading, error, sendMessage, reset, hydrate, conversationId, activeVerticalFromAnswer } = useChat();
   const [input, setInput] = useState("");
+  const [image, setImage] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const userScrolledUp = useRef(false);
+  const autoScrolling = useRef(false);
+  const autoScrollFrame = useRef(null);
+  const touchY = useRef(null);
   const nav = useNavigate();
   const hasStreamingAssistant = messages.some((m) => m.role === "assistant" && m.isStreaming);
 
@@ -53,13 +57,43 @@ export default function ChatPage() {
 
   const onContainerScroll = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || autoScrolling.current) return;
     userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
   }, []);
 
-  useEffect(() => {
-    if (userScrolledUp.current) return;
-    bottomRef.current?.scrollIntoView({ behavior: "auto" });
+  const onContainerWheel = useCallback((event) => {
+    if (event.deltaY < 0) userScrolledUp.current = true;
+  }, []);
+
+  const onContainerTouchStart = useCallback((event) => {
+    touchY.current = event.touches[0]?.clientY ?? null;
+  }, []);
+
+  const onContainerTouchMove = useCallback((event) => {
+    const nextY = event.touches[0]?.clientY;
+    if (touchY.current !== null && nextY > touchY.current) {
+      userScrolledUp.current = true;
+    }
+    touchY.current = nextY ?? null;
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || userScrolledUp.current) return;
+
+    autoScrolling.current = true;
+    el.scrollTop = el.scrollHeight;
+
+    if (autoScrollFrame.current) cancelAnimationFrame(autoScrollFrame.current);
+    autoScrollFrame.current = requestAnimationFrame(() => {
+      autoScrolling.current = false;
+      autoScrollFrame.current = null;
+    });
+
+    return () => {
+      if (autoScrollFrame.current) cancelAnimationFrame(autoScrollFrame.current);
+      autoScrolling.current = false;
+    };
   }, [messages, isLoading]);
 
   useEffect(() => {
@@ -68,10 +102,17 @@ export default function ChatPage() {
 
   const submit = async () => {
     const q = input.trim();
-    if (!q || isLoading) return;
+    if ((!q && !image) || isLoading) return;
     userScrolledUp.current = false;
     setInput("");
-    await sendMessage(q, vertical || undefined);
+    const submittedImage = image;
+    setImage(null);
+    const sent = await sendMessage(q, vertical || undefined, submittedImage);
+    if (!sent) {
+      setInput(q);
+      setImage(submittedImage);
+      return;
+    }
     setRefreshKey((k) => k + 1);
   };
 
@@ -88,6 +129,7 @@ export default function ChatPage() {
   const handleNew = () => {
     reset();
     setInput("");
+    setImage(null);
   };
 
   // Vertical for the accent layer (background flare):
@@ -122,7 +164,16 @@ export default function ChatPage() {
           style={{ filter: "blur(40px)" }}
         />
 
-        <div ref={scrollRef} onScroll={onContainerScroll} className="flex-1 overflow-y-auto px-5 sm:px-8 py-8 relative z-10" data-testid="chat-window">
+        <div
+          ref={scrollRef}
+          onScroll={onContainerScroll}
+          onWheel={onContainerWheel}
+          onTouchStart={onContainerTouchStart}
+          onTouchMove={onContainerTouchMove}
+          className="flex-1 overflow-y-auto px-5 sm:px-8 py-8 relative z-10"
+          style={{ overflowAnchor: "none" }}
+          data-testid="chat-window"
+        >
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 && (
               <div className="flex flex-col min-h-[68vh] pb-12 pt-8" data-testid="empty-state">
@@ -217,7 +268,14 @@ export default function ChatPage() {
 
         <div className="px-5 sm:px-8 py-4 border-t border-border bg-void/60 backdrop-blur-sm relative z-10">
           <div className="max-w-3xl mx-auto">
-            <ChatInput value={input} onChange={setInput} onSend={submit} isLoading={isLoading} />
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSend={submit}
+              isLoading={isLoading}
+              image={image}
+              onImageChange={setImage}
+            />
             <p className="text-center text-tertiary text-[11px] font-mono mt-2">
               Enter to send · Shift+Enter for newline · grounded in your documents
             </p>

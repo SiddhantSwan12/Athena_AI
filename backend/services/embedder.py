@@ -1,26 +1,27 @@
-"""Convert text to a 3072-dim vector using Gemini embedding."""
+"""Convert text to a vector using Gemini embedding (google-genai REST SDK)."""
 import asyncio
-import google.generativeai as genai
+
+from google import genai
+from google.genai import types
 
 from config import settings
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
-
+_client = genai.Client(api_key=settings.GEMINI_API_KEY)
 _EMBED_MODEL = "models/gemini-embedding-001"
 
 
 def _embed_sync(text: str, task_type: str) -> list[float]:
-    result = genai.embed_content(
+    result = _client.models.embed_content(
         model=_EMBED_MODEL,
-        content=text,
-        task_type=task_type,
+        contents=text,
+        config=types.EmbedContentConfig(task_type=task_type),
     )
-    return result["embedding"]
+    return list(result.embeddings[0].values)
 
 
 async def embed_query(text: str) -> list[float]:
-    return await asyncio.to_thread(_embed_sync, text, "retrieval_query")
+    return await asyncio.to_thread(_embed_sync, text, "RETRIEVAL_QUERY")
 
 
 async def embed_document(text: str) -> list[float]:
-    return await asyncio.to_thread(_embed_sync, text, "retrieval_document")
+    return await asyncio.to_thread(_embed_sync, text, "RETRIEVAL_DOCUMENT")

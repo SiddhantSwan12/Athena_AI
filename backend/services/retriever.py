@@ -1,4 +1,5 @@
 """Cosine-similarity retrieval over MongoDB chunks (in-process)."""
+import logging
 from typing import Any
 
 import numpy as np
@@ -6,6 +7,8 @@ import numpy as np
 from config import settings
 from db import chunks_col
 from services.embedder import embed_query
+
+logger = logging.getLogger(__name__)
 
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -22,7 +25,11 @@ async def retrieve_chunks(
     top_k = top_k or settings.TOP_K_CHUNKS
     threshold = threshold if threshold is not None else settings.SIMILARITY_THRESHOLD
 
-    q_vec = np.array(await embed_query(query), dtype=np.float32)
+    try:
+        q_vec = np.array(await embed_query(query), dtype=np.float32)
+    except Exception as exc:
+        logger.warning("Embedding failed, skipping RAG retrieval: %s", exc)
+        return []
 
     cursor = chunks_col.find(
         {"vertical": vertical},

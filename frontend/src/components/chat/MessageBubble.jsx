@@ -113,7 +113,27 @@ export default function MessageBubble({ message, index }) {
           }
         >
           {isUser ? (
-            <span>{message.content}</span>
+            <div className="space-y-2">
+              {message.attachments?.map((attachment, attachmentIndex) => (
+                <div
+                  key={`${attachment.name || "image"}-${attachmentIndex}`}
+                  className="overflow-hidden rounded-lg border border-white/20 bg-black/15"
+                >
+                  {attachment.preview_url ? (
+                    <img
+                      src={attachment.preview_url}
+                      alt={attachment.name || "Attached image"}
+                      className="block max-h-64 w-full object-contain"
+                    />
+                  ) : (
+                    <div className="px-3 py-2 text-xs font-mono">
+                      image · {attachment.name || "attachment"}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <span className="block">{message.content}</span>
+            </div>
           ) : (
             <div className="prose-athena">
               <ReactMarkdown

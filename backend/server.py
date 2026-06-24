@@ -10,6 +10,7 @@ from routers import chat as chat_router
 from routers import conversations as conversations_router
 from routers import health as health_router
 from routers import ingest as ingest_router
+from routers import speech as speech_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +35,7 @@ app.include_router(auth_router.router)
 app.include_router(chat_router.router)
 app.include_router(ingest_router.router)
 app.include_router(conversations_router.router)
+app.include_router(speech_router.router)
 
 
 @app.on_event("startup")
