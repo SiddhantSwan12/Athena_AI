@@ -9,22 +9,15 @@ async function getMermaid() {
     _mermaid = mod.default;
     _mermaid.initialize({
       startOnLoad: false,
-      theme: "dark",
+      theme: "neutral",
       themeVariables: {
-        primaryColor: "#1e1b2e",
-        primaryTextColor: "#E8E2DA",
-        primaryBorderColor: "#6B5BFF",
-        lineColor: "#6B5BFF80",
-        secondaryColor: "#13111a",
-        tertiaryColor: "#0d0b14",
-        background: "#070608",
-        mainBkg: "#1a1726",
-        nodeBorder: "#6B5BFF",
-        clusterBkg: "#1a1726",
-        titleColor: "#F4EFE7",
-        edgeLabelBackground: "#13111a",
-        fontFamily: "JetBrains Mono, monospace",
+        fontFamily: "Inter Tight, Inter, system-ui, sans-serif",
         fontSize: "13px",
+        primaryTextColor: "#111",
+        secondaryTextColor: "#333",
+        tertiaryTextColor: "#111",
+        edgeLabelBackground: "#f5f5f5",
+        lineColor: "#555",
       },
     });
   }
@@ -47,16 +40,14 @@ export default function MermaidDiagram({ code, accent }) {
       .catch((e) => {
         if (!cancelled) setError(e?.message || "Could not render diagram");
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [code]);
 
   if (error) {
     return (
       <pre
         className="text-xs p-3 rounded-lg border overflow-x-auto my-3"
-        style={{ color: "#ff6b6b", background: "rgba(0,0,0,0.4)", borderColor: "rgba(255,107,107,0.2)" }}
+        style={{ color: "#cc3333", background: "rgba(255,0,0,0.04)", borderColor: "rgba(255,0,0,0.15)" }}
       >
         {code}
       </pre>
@@ -67,21 +58,23 @@ export default function MermaidDiagram({ code, accent }) {
     return (
       <div
         className="flex items-center gap-2 p-4 rounded-xl border my-3"
-        style={{ borderColor: `${accentColor}30`, background: "rgba(0,0,0,0.25)" }}
+        style={{ borderColor: `${accentColor}30`, background: "rgba(0,0,0,0.04)" }}
       >
         <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: accentColor }} />
-        <span className="text-xs font-mono" style={{ color: accentColor }}>
-          rendering diagram…
-        </span>
+        <span className="text-xs font-mono" style={{ color: accentColor }}>rendering diagram…</span>
       </div>
     );
   }
 
   return (
     <div
-      className="my-4 p-4 rounded-xl border overflow-x-auto diagram-container"
-      style={{ background: "rgba(0,0,0,0.28)", borderColor: `${accentColor}28` }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+      className="my-4 rounded-xl border overflow-x-auto diagram-container"
+      style={{ background: "#ffffff", borderColor: `${accentColor}30` }}
+    >
+      <div
+        className="p-4"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    </div>
   );
 }

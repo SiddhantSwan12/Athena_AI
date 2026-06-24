@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -33,6 +33,8 @@ export default function ChatPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
   const scrollRef = useRef(null);
+  const bottomRef = useRef(null);
+  const userScrolledUp = useRef(false);
   const nav = useNavigate();
   const hasStreamingAssistant = messages.some((m) => m.role === "assistant" && m.isStreaming);
 
@@ -49,9 +51,15 @@ export default function ChatPage() {
     }
   }, [vertical, activeVerticalFromAnswer]);
 
+  const onContainerScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
+  }, []);
+
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    if (userScrolledUp.current) return;
+    bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, isLoading]);
 
   useEffect(() => {
@@ -61,6 +69,7 @@ export default function ChatPage() {
   const submit = async () => {
     const q = input.trim();
     if (!q || isLoading) return;
+    userScrolledUp.current = false;
     setInput("");
     await sendMessage(q, vertical || undefined);
     setRefreshKey((k) => k + 1);
@@ -113,7 +122,7 @@ export default function ChatPage() {
           style={{ filter: "blur(40px)" }}
         />
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-8 py-8 relative z-10" data-testid="chat-window">
+        <div ref={scrollRef} onScroll={onContainerScroll} className="flex-1 overflow-y-auto px-5 sm:px-8 py-8 relative z-10" data-testid="chat-window">
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 && (
               <div className="flex flex-col min-h-[68vh] pb-12 pt-8" data-testid="empty-state">
@@ -202,6 +211,7 @@ export default function ChatPage() {
             ))}
 
             <AnimatePresence>{isLoading && !hasStreamingAssistant && <ThinkingDots />}</AnimatePresence>
+            <div ref={bottomRef} />
           </div>
         </div>
 

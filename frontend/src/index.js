@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import App from "./App";
 import { AuthProvider } from "./hooks/useAuth";
 import { VerticalProvider } from "./lib/VerticalContext";
+import { ThemeProvider } from "./lib/ThemeContext";
 import "./index.css";
 
 const root = createRoot(document.getElementById("root"));
@@ -13,6 +14,7 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <ThemeProvider>
         <VerticalProvider>
           <App />
           <Toaster
@@ -29,6 +31,7 @@ root.render(
             }}
           />
         </VerticalProvider>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

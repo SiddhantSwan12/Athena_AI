@@ -2,11 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── DARK MODE (default) ─────────────────────────────────────────── */
 :root {
   color-scheme: dark;
+
+  /* Space-separated RGB channels — lets Tailwind / rgba() apply opacity */
+  --c-void:      7 6 8;
+  --c-paper:     15 13 16;
+  --c-surface:   22 19 24;
+  --c-border:    35 31 37;
+  --c-muted:     46 41 50;
+  --c-primary:   244 239 231;
+  --c-secondary: 156 149 160;
+  --c-tertiary:  93 85 96;
+  --c-quiet:     58 54 64;
+
   --font-display: "Fraunces", serif;
-  --font-sans: "Inter Tight", Inter, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans:    "Inter Tight", Inter, system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", monospace;
 
   /* Default vertical accent — finance ink */
   --accent:      #6B5BFF;
@@ -14,6 +27,22 @@
   --accent-glow: #6B5BFF40;
 }
 
+/* ─── LIGHT MODE ──────────────────────────────────────────────────── */
+html.light {
+  color-scheme: light;
+
+  --c-void:      250 250 248;
+  --c-paper:     242 238 232;
+  --c-surface:   234 229 223;
+  --c-border:    212 206 199;
+  --c-muted:     192 186 178;
+  --c-primary:   26 22 20;
+  --c-secondary: 80 75 71;
+  --c-tertiary:  125 120 112;
+  --c-quiet:     155 149 144;
+}
+
+/* ─── PER-VERTICAL ACCENT OVERRIDES ──────────────────────────────── */
 [data-vertical="finance"]       { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
 [data-vertical="health"]        { --accent: #2BCD8A; --accent-dim: #2BCD8A18; --accent-glow: #2BCD8A40; }
 [data-vertical="education"]     { --accent: #E5A14B; --accent-dim: #E5A14B18; --accent-glow: #E5A14B40; }
@@ -26,13 +55,14 @@
 [data-vertical="entertainment"] { --accent: #EC4899; --accent-dim: #EC489918; --accent-glow: #EC489940; }
 [data-vertical="auto"]          { --accent: #6B5BFF; --accent-dim: #6B5BFF18; --accent-glow: #6B5BFF40; }
 
+/* ─── BASE ────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background-color: #070608;
-  color: #F4EFE7;
+  background-color: rgb(var(--c-void));
+  color: rgb(var(--c-primary));
   font-family: var(--font-sans);
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
@@ -41,23 +71,23 @@ body {
 
 html { scroll-behavior: smooth; }
 
-/* Editorial typographic defaults */
+/* ─── TYPOGRAPHY ──────────────────────────────────────────────────── */
 .font-display {
   font-family: var(--font-display);
   font-optical-sizing: auto;
   letter-spacing: -0.02em;
 }
 
-/* Scrollbar */
+/* ─── SCROLLBAR ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #231F25; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #2E2932; }
+::-webkit-scrollbar-thumb { background: rgb(var(--c-border)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-muted)); }
 
-/* Selection */
-::selection { background: rgba(107,91,255,0.32); color: #F4EFE7; }
+/* ─── SELECTION ───────────────────────────────────────────────────── */
+::selection { background: rgba(107,91,255,0.32); color: rgb(var(--c-primary)); }
 
-/* Paper-noise overlay for surfaces */
+/* ─── SURFACE TEXTURES ────────────────────────────────────────────── */
 .paper-noise::before {
   content: "";
   position: absolute;
@@ -69,21 +99,18 @@ html { scroll-behavior: smooth; }
   mix-blend-mode: overlay;
 }
 
-/* Editorial baseline rule */
 .editorial-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, #231F25 12%, #231F25 88%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgb(var(--c-border)) 12%, rgb(var(--c-border)) 88%, transparent 100%);
 }
 
-/* Subtle dotted grid — replaces square grid for editorial feel */
 .dot-grid {
-  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(128,128,128,0.12) 1px, transparent 1px);
   background-size: 18px 18px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
 }
 
-/* CRT-ish scanline (very subtle, only on hero terminal) */
 .scanlines {
   background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px);
   background-size: 100% 3px;
@@ -94,16 +121,15 @@ html { scroll-behavior: smooth; }
   -webkit-mask-image: radial-gradient(ellipse at center, black 15%, transparent 76%);
 }
 
-/* Marker number — for sectional numbering "01 — DOMAIN" */
+/* ─── MARKER / DROPCAP ────────────────────────────────────────────── */
 .marker {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: #5D5560;
+  color: rgb(var(--c-tertiary));
 }
 
-/* Drop-cap style for editorial paragraphs */
 .dropcap::first-letter {
   font-family: var(--font-display);
   font-style: italic;
@@ -112,13 +138,11 @@ html { scroll-behavior: smooth; }
   line-height: 0.85;
   float: left;
   margin: 0.05em 0.12em -0.05em -0.02em;
-  color: #F4EFE7;
+  color: rgb(var(--c-primary));
 }
 
-/* HUD ruler ticks for terminal-style boxes */
-.hud-corners {
-  position: relative;
-}
+/* ─── HUD CORNERS ─────────────────────────────────────────────────── */
+.hud-corners { position: relative; }
 .hud-corners::before,
 .hud-corners::after,
 .hud-corners > .hud-c1,
@@ -134,23 +158,30 @@ html { scroll-behavior: smooth; }
 .hud-corners > .hud-c1 { bottom: -1px; left: -1px; border-right: none; border-top: none; position: absolute; }
 .hud-corners > .hud-c2 { bottom: -1px; right: -1px; border-left: none; border-top: none; position: absolute; }
 
-/* Tabular figures for HUD numbers */
 .tabular { font-variant-numeric: tabular-nums; }
 
-/* Markdown prose for assistant answers */
-.prose-athena { color: #E8E2DA; line-height: 1.65; font-size: 0.92rem; }
-.prose-athena p { margin: 0.55rem 0; }
-.prose-athena strong { color: #F4EFE7; font-weight: 600; }
+/* ─── PROSE (ASSISTANT ANSWERS) ───────────────────────────────────── */
+.prose-athena {
+  color: rgb(var(--c-primary));
+  line-height: 1.65;
+  font-size: 0.92rem;
+}
+.prose-athena p  { margin: 0.55rem 0; animation: paraFadeIn 0.22s ease-out both; }
+.prose-athena strong { color: rgb(var(--c-primary)); font-weight: 600; }
 .prose-athena code {
-  background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.38);
+  border: 1px solid rgba(255,255,255,0.07);
   padding: 0.08rem 0.32rem;
   border-radius: 0.35rem;
   font-family: var(--font-mono);
   font-size: 0.85em;
 }
+html.light .prose-athena code {
+  background: rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.12);
+}
 .prose-athena pre {
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.48);
   border: 1px solid rgba(255,255,255,0.06);
   padding: 0.9rem;
   border-radius: 0.6rem;
@@ -158,11 +189,17 @@ html { scroll-behavior: smooth; }
   font-family: var(--font-mono);
   font-size: 0.85em;
 }
+html.light .prose-athena pre {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.1);
+}
 .prose-athena ul, .prose-athena ol { padding-left: 1.4rem; margin: 0.55rem 0; }
 .prose-athena li { margin: 0.2rem 0; }
-.prose-athena a { color: #93C5FD; text-decoration: underline; text-underline-offset: 2px; }
-.prose-athena h1, .prose-athena h2, .prose-athena h3 {
-  color: #F4EFE7;
+.prose-athena a  { color: #93C5FD; text-decoration: underline; text-underline-offset: 2px; }
+.prose-athena h1,
+.prose-athena h2,
+.prose-athena h3 {
+  color: rgb(var(--c-primary));
   font-family: var(--font-display);
   font-weight: 600;
   font-style: italic;
@@ -171,20 +208,18 @@ html { scroll-behavior: smooth; }
 .prose-athena blockquote {
   border-left: 2px solid var(--accent, #6B5BFF);
   padding-left: 0.9rem;
-  color: #C7BFC9;
+  color: rgb(var(--c-secondary));
   margin: 0.55rem 0;
 }
 
-/* Tables */
+/* ─── TABLES ──────────────────────────────────────────────────────── */
 .athena-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
   font-family: var(--font-mono);
 }
-.athena-thead {
-  border-bottom: 1px solid var(--accent, #6B5BFF);
-}
+.athena-thead { border-bottom: 1px solid var(--accent, #6B5BFF); }
 .athena-th {
   padding: 0.45rem 0.85rem;
   text-align: left;
@@ -195,27 +230,26 @@ html { scroll-behavior: smooth; }
   text-transform: uppercase;
   white-space: nowrap;
 }
-.athena-tr {
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
+.athena-tr { border-bottom: 1px solid rgb(var(--c-border)); }
 .athena-tr:last-child { border-bottom: none; }
-.athena-tr:hover { background: rgba(255,255,255,0.03); }
+.athena-tr:hover { background: rgb(var(--c-muted) / 0.18); }
 .athena-td {
   padding: 0.42rem 0.85rem;
-  color: #C7BFC9;
+  color: rgb(var(--c-secondary));
   vertical-align: top;
 }
 
-/* Mermaid diagram container SVG colours */
-.diagram-container svg { max-width: 100%; height: auto; }
-.diagram-container .label { font-family: var(--font-mono) !important; }
+/* ─── MERMAID DIAGRAMS ────────────────────────────────────────────── */
+.diagram-container svg   { max-width: 100%; height: auto; }
+.diagram-container .label { font-family: var(--font-sans) !important; }
 
-/* Streamed paragraph fade-in */
-.prose-athena p { animation: paraFadeIn 0.22s ease-out both; }
+/* ─── STREAMING PARAGRAPH FADE-IN ────────────────────────────────── */
 @keyframes paraFadeIn {
   from { opacity: 0; transform: translateY(3px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── LINK UNDERLINE ANIMATION ────────────────────────────────────── */
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -223,7 +257,6 @@ html { scroll-behavior: smooth; }
   overflow: hidden;
 }
 
-/* Custom underline animation for nav links / inline links */
 .link-line {
   background-image: linear-gradient(currentColor, currentColor);
   background-size: 0% 1px;
@@ -233,7 +266,6 @@ html { scroll-behavior: smooth; }
 }
 .link-line:hover { background-size: 100% 1px; }
 
-/* Brand wordmark italic stylized */
 .wordmark {
   font-family: var(--font-display);
   font-style: italic;

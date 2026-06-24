@@ -1,14 +1,16 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut, MessageSquare, Upload, Library } from "lucide-react";
+import { LogOut, MessageSquare, Upload, Library, Sun, Moon } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useVertical } from "../../lib/VerticalContext";
+import { useTheme } from "../../lib/ThemeContext";
 import VerticalSwitcher from "../vertical/VerticalSwitcher";
 import { OwlIcon } from "../Icons";
 
 export default function TopBar({ onClear, showSwitcher = true, rightSlot }) {
   const { user, logout } = useAuth();
   const { accent } = useVertical();
+  const { theme, toggle: toggleTheme } = useTheme();
   const nav = useNavigate();
 
   const linkClass = ({ isActive }) =>
@@ -53,6 +55,13 @@ export default function TopBar({ onClear, showSwitcher = true, rightSlot }) {
       <div className="flex items-center gap-3">
         {showSwitcher && <VerticalSwitcher />}
         {rightSlot}
+        <button
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className="flex items-center justify-center w-7 h-7 rounded-lg border border-border text-tertiary hover:text-secondary hover:border-muted transition-colors bg-surface"
+        >
+          {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+        </button>
         {onClear && (
           <button
             onClick={onClear}
