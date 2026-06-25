@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { YOUTUBE_SEEK_EVENT } from "../../lib/youtube";
+import {
+  YOUTUBE_SEEK_EVENT,
+  youtubeUrlAtTime,
+} from "../../lib/youtube";
 
 const VERDICT_META = {
   supported: { color: "#22C55E", icon: CheckCircle2 },
@@ -123,8 +126,10 @@ export default function VideoTimeline({
               data-testid={`timeline-item-${index}`}
               aria-label={`${item.type} at ${item.timestamp}: ${item.title}`}
             >
-              <button
-                type="button"
+              <a
+                href={youtubeUrlAtTime(videoId, item.timestamp_seconds)}
+                target="_blank"
+                rel="noreferrer"
                 onClick={() =>
                   window.dispatchEvent(
                     new CustomEvent(YOUTUBE_SEEK_EVENT, {
@@ -136,10 +141,10 @@ export default function VideoTimeline({
                   )
                 }
                 className="min-h-7 self-start rounded border border-border px-1 py-1 font-mono text-[9px] text-tertiary transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 sm:px-1.5 sm:text-[10px]"
-                aria-label={`Play video at ${item.timestamp}`}
+                aria-label={`Open video at ${item.timestamp}`}
               >
                 {item.timestamp}
-              </button>
+              </a>
               <span className="relative flex justify-center">
                 {index < filteredTimeline.length - 1 && (
                   <span className="absolute bottom-[-16px] top-4 w-px bg-border" />

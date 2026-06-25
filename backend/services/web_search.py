@@ -30,7 +30,15 @@ _client: AsyncTavilyClient | None = (
 _DEEP_SEARCH_DOMAINS = {"geopolitics", "law", "environment"}
 
 
-async def web_search(query: str, vertical: str, max_results: int = 5) -> list[dict[str, Any]]:
+async def web_search(
+    query: str,
+    vertical: str,
+    max_results: int = 5,
+    *,
+    topic: str | None = None,
+    time_range: str | None = None,
+    include_domains: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Search the live web for the query and return structured results.
 
     Returns a list of dicts, each containing:
@@ -52,7 +60,10 @@ async def web_search(query: str, vertical: str, max_results: int = 5) -> list[di
         response = await _client.search(
             query=query,
             search_depth=search_depth,
+            topic=topic,
+            time_range=time_range,
             max_results=max_results,
+            include_domains=include_domains,
             include_answer=False,   # We want Claude to synthesise, not Tavily
             include_raw_content=False,
         )
@@ -68,6 +79,7 @@ async def web_search(query: str, vertical: str, max_results: int = 5) -> list[di
                 "content": content,
                 "score": round(float(r.get("score", 0)), 3),
                 "source": "web",
+                "published_date": r.get("published_date"),
             })
 
         logger.info("Tavily returned %d results for query=%r vertical=%s", len(results), query[:60], vertical)

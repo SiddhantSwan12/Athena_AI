@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import re
+from datetime import date, datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 
@@ -35,6 +36,21 @@ _PRIMARY_DOMAINS = {
     "oecd.org",
     "europa.eu",
 }
+_ENTITY_OFFICIAL_DOMAINS = {
+    "apple": {"apple.com"},
+    "iphone": {"apple.com"},
+    "ipad": {"apple.com"},
+    "macbook": {"apple.com"},
+    "m5": {"apple.com"},
+    "microsoft": {"microsoft.com"},
+    "windows": {"microsoft.com"},
+    "openai": {"openai.com"},
+    "chatgpt": {"openai.com"},
+    "google": {"google.com", "blog.google"},
+    "gemini": {"google.com", "blog.google"},
+    "youtube": {"youtube.com", "blog.youtube"},
+    "meta": {"about.fb.com", "meta.com"},
+}
 _LOW_SIGNAL_DOMAINS = {
     "facebook.com",
     "instagram.com",
@@ -49,6 +65,8 @@ _LOW_SIGNAL_DOMAINS = {
 
 _SYSTEM_PROMPT = """You verify one factual claim using only the supplied evidence.
 
+Current date: {current_date}
+
 Allowed verdicts:
 - supported: reliable evidence directly supports the material claim
 - contradicted: reliable evidence directly conflicts with the material claim
@@ -60,9 +78,12 @@ Rules:
 2. A source repeating the claim is not independent verification.
 3. Prefer recent evidence for time-sensitive claims.
 4. Prefer higher quality_score evidence and independent domains.
-5. Never convert uncertainty into certainty.
-6. Confidence measures confidence in the verdict, not probability that the claim is true.
-7. Return ONLY JSON:
+5. For present-tense claims about whether something exists, is available, or has
+   been released, judge the claim against current status on the date above.
+6. A newer first-party announcement overrides older speculation or reporting.
+7. Never convert uncertainty into certainty.
+8. Confidence measures confidence in the verdict, not probability that the claim is true.
+9. Return ONLY JSON:
 {
   "verdict": "supported|contradicted|misleading|unverified",
   "confidence": 0.0,
@@ -80,11 +101,85 @@ def _domain(url: str) -> str:
     return (urlparse(url).hostname or "").lower().removeprefix("www.")
 
 
+def _domain_matches(domain: str, candidates: set[str]) -> bool:
+    return any(
+        domain == candidate or domain.endswith(f".{candidate}")
+        for candidate in candidates
+    )
+
+
+def official_domains_for_claim(claim: str) -> set[str]:
+    lowered = claim.lower()
+    domains: set[str] = set()
+    for keyword, candidates in _ENTITY_OFFICIAL_DOMAINS.items():
+        if re.search(rf"\b{re.escape(keyword)}\b", lowered):
+            domains.update(candidates)
+    return domains
+
+
+def is_time_sensitive_claim(claim: str) -> bool:
+    return bool(
+        re.search(
+            r"\b("
+            r"exist(?:s|ed)?|release[ds]?|available|availability|launched?|"
+            r"announced?|current(?:ly)?|latest|today|now|has not|hasn't|"
+            r"not yet|ceo|president"
+            r")\b",
+            claim,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def official_search_query(claim: str, current_date: str) -> str:
+    neutral = re.sub(
+        r"\b(?:does not|do not|did not|has not|have not|had not|"
+        r"is not|are not|was not|were not|doesn't|don't|didn't|"
+        r"hasn't|haven't|hadn't|isn't|aren't|wasn't|weren't|not)\b",
+        " ",
+        claim,
+        flags=re.IGNORECASE,
+    )
+    neutral = re.sub(r"[^\w\s-]", " ", neutral)
+    neutral = re.sub(r"\s+", " ", neutral).strip()
+    return (
+        f"{neutral} official announcement release availability "
+        f"as of {current_date}"
+    )
+
+
+def _freshness_score(published_date: str | None) -> float:
+    if not published_date:
+        return 0.55
+    try:
+        published = datetime.fromisoformat(
+            published_date.replace("Z", "+00:00")
+        )
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=timezone.utc)
+        age_days = max(
+            0,
+            (datetime.now(timezone.utc) - published).days,
+        )
+    except (TypeError, ValueError):
+        return 0.55
+    if age_days <= 90:
+        return 1.0
+    if age_days <= 365:
+        return 0.85
+    if age_days <= 730:
+        return 0.55
+    return 0.2
+
+
 def source_quality(
     *,
     kind: str,
     url: str | None,
     relevance: float,
+    official_domains: set[str] | None = None,
+    published_date: str | None = None,
+    time_sensitive: bool = False,
 ) -> tuple[float, str]:
     relevance = max(0.0, min(1.0, relevance))
     if kind == "knowledge_base":
@@ -92,7 +187,10 @@ def source_quality(
         label = "user-provided document"
     else:
         domain = _domain(url or "")
-        if domain.endswith(".gov") or domain in _PRIMARY_DOMAINS:
+        if official_domains and _domain_matches(domain, official_domains):
+            base = 0.99
+            label = "first-party official source"
+        elif domain.endswith(".gov") or domain in _PRIMARY_DOMAINS:
             base = 0.95
             label = "primary or official source"
         elif domain.endswith(".edu"):
@@ -108,13 +206,20 @@ def source_quality(
             base = 0.58
             label = "general web source"
 
-    quality = round(base * 0.72 + relevance * 0.28, 3)
+    freshness = _freshness_score(published_date) if time_sensitive else 0.7
+    quality = round(
+        base * 0.64 + relevance * 0.22 + freshness * 0.14,
+        3,
+    )
     return quality, label
 
 
 def _evidence_payload(
     chunks: list[dict[str, Any]],
     web_results: list[dict[str, Any]],
+    *,
+    official_domains: set[str] | None = None,
+    time_sensitive: bool = False,
 ) -> list[dict[str, Any]]:
     evidence: list[dict[str, Any]] = []
     for index, chunk in enumerate(chunks):
@@ -123,6 +228,8 @@ def _evidence_payload(
             kind="knowledge_base",
             url=None,
             relevance=relevance,
+            official_domains=official_domains,
+            time_sensitive=time_sensitive,
         )
         evidence.append(
             {
@@ -144,6 +251,9 @@ def _evidence_payload(
             kind="web",
             url=url,
             relevance=relevance,
+            official_domains=official_domains,
+            published_date=result.get("published_date"),
+            time_sensitive=time_sensitive,
         )
         evidence.append(
             {
@@ -156,6 +266,7 @@ def _evidence_payload(
                 "relevance": relevance,
                 "quality_score": quality,
                 "quality_label": quality_label,
+                "published_date": result.get("published_date"),
             }
         )
     return sorted(
@@ -220,7 +331,10 @@ def _verify_sync(claim: str, evidence: list[dict[str, Any]]) -> dict[str, Any]:
                 model=model,
                 max_tokens=500,
                 temperature=0,
-                system=_SYSTEM_PROMPT,
+                system=_SYSTEM_PROMPT.replace(
+                    "{current_date}",
+                    date.today().isoformat(),
+                ),
                 messages=[{"role": "user", "content": prompt}],
             )
             return _parse_verdict(
@@ -244,11 +358,56 @@ async def verify_claim(
     if not claim_text:
         raise FactCheckError("Claim text is missing")
 
-    chunks, web_results = await asyncio.gather(
+    temporal = is_time_sensitive_claim(claim_text)
+    official_domains = official_domains_for_claim(claim_text)
+    today = date.today().strftime("%B %d, %Y")
+    evidence_query = claim_text
+    if temporal:
+        evidence_query = (
+            f"{claim_text} current status as of {today} "
+            "official announcement availability release"
+        )
+
+    search_tasks = [
+        web_search(
+            evidence_query,
+            vertical,
+            max_results=6,
+            topic="news" if temporal else None,
+            time_range="year" if temporal else None,
+        )
+    ]
+    if official_domains:
+        search_tasks.append(
+            web_search(
+                official_search_query(claim_text, today),
+                vertical,
+                max_results=4,
+                include_domains=sorted(official_domains),
+            )
+        )
+
+    chunks, *web_batches = await asyncio.gather(
         retrieve_chunks(claim_text, vertical, top_k=3, threshold=0.45),
-        web_search(claim_text, vertical, max_results=4),
+        *search_tasks,
     )
-    evidence = _evidence_payload(chunks, web_results)
+    seen_urls: set[str] = set()
+    web_results: list[dict[str, Any]] = []
+    for batch in web_batches:
+        for result in batch:
+            url = result.get("url") or ""
+            normalized_url = url.rstrip("/")
+            if normalized_url and normalized_url in seen_urls:
+                continue
+            if normalized_url:
+                seen_urls.add(normalized_url)
+            web_results.append(result)
+    evidence = _evidence_payload(
+        chunks,
+        web_results,
+        official_domains=official_domains,
+        time_sensitive=temporal,
+    )
     verdict = await asyncio.to_thread(_verify_sync, claim_text, evidence)
     selected_ids = set(verdict["evidence_ids"])
     selected_evidence = [

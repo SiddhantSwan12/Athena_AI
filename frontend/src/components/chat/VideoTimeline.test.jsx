@@ -52,7 +52,10 @@ test("renders a chronological timeline and seeks the video", () => {
 
   expect(host.textContent).toContain("Opening");
   expect(host.textContent).toContain("supported");
-  const timestamp = host.querySelector('[aria-label="Play video at 00:20"]');
+  const timestamp = host.querySelector('[aria-label="Open video at 00:20"]');
+  expect(timestamp.getAttribute("href")).toBe(
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=20s"
+  );
   act(() => {
     timestamp.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });

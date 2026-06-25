@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 from services import fact_check
@@ -115,6 +116,95 @@ def test_source_quality_prefers_official_sources():
     assert "user-generated" in social_label
 
 
+def test_first_party_product_source_outranks_general_web():
+    official, official_label = fact_check.source_quality(
+        kind="web",
+        url="https://www.apple.com/newsroom/product-announcement",
+        relevance=0.65,
+        official_domains={"apple.com"},
+        published_date="2026-03-04T09:00:00+00:00",
+        time_sensitive=True,
+    )
+    general, _ = fact_check.source_quality(
+        kind="web",
+        url="https://example.com/apple-rumor",
+        relevance=0.98,
+        official_domains={"apple.com"},
+        published_date="2025-01-01T09:00:00+00:00",
+        time_sensitive=True,
+    )
+
+    assert official > general
+    assert official_label == "first-party official source"
+
+
+def test_apple_release_claim_is_time_sensitive_and_maps_to_apple():
+    claim = "The MacBook Neo does not exist and M5 chips are not released."
+
+    assert fact_check.is_time_sensitive_claim(claim)
+    assert fact_check.official_domains_for_claim(claim) == {"apple.com"}
+
+
+def test_official_search_query_removes_negative_claim_wording():
+    query = fact_check.official_search_query(
+        "The MacBook Neo does not exist and M5 chips have not been released.",
+        "June 25, 2026",
+    )
+
+    assert "does not" not in query
+    assert "have not" not in query
+    assert "MacBook Neo" in query
+    assert "M5 chips" in query
+    assert "official announcement release availability" in query
+
+
+def test_verify_claim_deduplicates_trailing_slash_urls(monkeypatch):
+    async def fake_chunks(*_args, **_kwargs):
+        return []
+
+    async def fake_web(*_args, **_kwargs):
+        return [
+            {
+                "title": "Apple announcement",
+                "url": "https://www.apple.com/newsroom/product",
+                "content": "Apple announced the product.",
+                "score": 0.9,
+            },
+            {
+                "title": "Duplicate Apple announcement",
+                "url": "https://www.apple.com/newsroom/product/",
+                "content": "Apple announced the product.",
+                "score": 0.85,
+            },
+        ]
+
+    monkeypatch.setattr(fact_check, "retrieve_chunks", fake_chunks)
+    monkeypatch.setattr(fact_check, "web_search", fake_web)
+    monkeypatch.setattr(
+        fact_check,
+        "_verify_sync",
+        lambda _claim, evidence: {
+            "verdict": "supported",
+            "confidence": 0.9,
+            "explanation": "Official evidence supports it.",
+            "evidence_ids": [evidence[0]["id"]],
+        },
+    )
+
+    result = asyncio.run(
+        fact_check.verify_claim(
+            {
+                "claim": "Apple announced the MacBook Neo.",
+                "timestamp": "00:10",
+                "timestamp_seconds": 10,
+            },
+            "technology",
+        )
+    )
+
+    assert len(result["evidence"]) == 1
+
+
 def test_evidence_payload_sorts_by_quality_then_relevance():
     evidence = fact_check._evidence_payload(
         [],
@@ -136,6 +226,36 @@ def test_evidence_payload_sorts_by_quality_then_relevance():
 
     assert evidence[0]["domain"] == "agency.gov"
     assert evidence[0]["quality_score"] > evidence[1]["quality_score"]
+
+
+def test_verify_time_sensitive_claim_uses_current_and_official_search(monkeypatch):
+    calls = []
+
+    async def fake_chunks(*_args, **_kwargs):
+        return []
+
+    async def fake_web(query, _vertical, **kwargs):
+        calls.append((query, kwargs))
+        return []
+
+    monkeypatch.setattr(fact_check, "retrieve_chunks", fake_chunks)
+    monkeypatch.setattr(fact_check, "web_search", fake_web)
+
+    result = asyncio.run(
+        fact_check.verify_claim(
+            {
+                "claim": "The MacBook Neo does not exist.",
+                "timestamp": "00:20",
+                "timestamp_seconds": 20,
+            },
+            "technology",
+        )
+    )
+
+    assert result["verdict"] == "unverified"
+    assert any(date.today().strftime("%B %d, %Y") in query for query, _ in calls)
+    assert any(call.get("include_domains") == ["apple.com"] for _, call in calls)
+    assert any(call.get("time_range") == "year" for _, call in calls)
 
 
 def test_credibility_summary_reports_mixed_alignment():
