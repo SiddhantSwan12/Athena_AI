@@ -72,3 +72,41 @@ def test_analyze_youtube_video_returns_structured_moments():
         "type": "video",
         "uri": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     }
+
+
+def test_build_video_timeline_orders_moments_and_claims():
+    timeline = youtube.build_video_timeline(
+        [
+            {
+                "timestamp_seconds": 30,
+                "timestamp": "00:30",
+                "label": "Later moment",
+                "observation": "A later observation.",
+            },
+            {
+                "timestamp_seconds": 10,
+                "timestamp": "00:10",
+                "label": "Opening",
+                "observation": "The opening observation.",
+            },
+        ],
+        [
+            {
+                "id": "claim-10",
+                "timestamp_seconds": 10,
+                "timestamp": "00:10",
+                "claim": "A factual claim.",
+                "verdict": "supported",
+                "confidence": 0.9,
+                "explanation": "Evidence agrees.",
+                "evidence": [],
+            }
+        ],
+    )
+
+    assert [item["type"] for item in timeline] == [
+        "moment",
+        "claim",
+        "moment",
+    ]
+    assert timeline[1]["verdict"] == "supported"

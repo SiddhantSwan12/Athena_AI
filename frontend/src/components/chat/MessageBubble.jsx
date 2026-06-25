@@ -5,9 +5,9 @@ import remarkGfm from "remark-gfm";
 import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
 import MermaidDiagram from "./MermaidDiagram";
-import FactCheckPanel from "./FactCheckPanel";
+import VideoTimeline from "./VideoTimeline";
 import { OwlIcon } from "../Icons";
-import { Clock3, FileAudio, Youtube } from "lucide-react";
+import { FileAudio, Youtube } from "lucide-react";
 import { YOUTUBE_SEEK_EVENT } from "../../lib/youtube";
 
 const remarkPlugins = [remarkGfm];
@@ -45,7 +45,7 @@ function YouTubeAttachment({ attachment }) {
       <iframe
         key={`${videoId}-${startSeconds}`}
         src={src}
-        title="Attached YouTube video"
+        title={`YouTube video ${videoId}`}
         className="aspect-video w-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
@@ -99,6 +99,9 @@ function CodeBlock({ node, inline, className, children, accent, isStreaming, ...
 
 export default function MessageBubble({ message, index }) {
   const isUser = message.role === "user";
+  const hasVideoContent =
+    Boolean(message.video) ||
+    message.attachments?.some((attachment) => attachment.type === "youtube");
   const { accent: ctxAccent } = useVertical();
   const msgAccent =
     message.vertical && ACCENT_MAP[message.vertical]
@@ -151,12 +154,16 @@ export default function MessageBubble({ message, index }) {
       )}
 
       <div
-        className={`flex flex-col gap-2 max-w-[78%] min-w-0 ${
+        className={`flex min-w-0 flex-col gap-2 ${
+          hasVideoContent
+            ? "max-w-[96%] sm:max-w-[88%]"
+            : "max-w-[86%] sm:max-w-[78%]"
+        } ${
           isUser ? "items-end" : "items-start"
         }`}
       >
         <div
-          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed break-words ${
+          className={`min-w-0 max-w-full rounded-2xl px-3 py-3 text-sm leading-relaxed break-words sm:px-4 ${
             isUser
               ? "text-white rounded-br-sm"
               : "bg-surface border text-primary rounded-bl-sm"
@@ -271,48 +278,11 @@ export default function MessageBubble({ message, index }) {
             messageVertical={message.vertical}
           />
         )}
-        {!isUser && message.video?.moments?.length > 0 && (
-          <div
-            className="w-full rounded-lg border border-border bg-surface/70 p-3"
-            data-testid="youtube-moments"
-          >
-            <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-tertiary">
-              <Clock3 className="h-3.5 w-3.5" />
-              Video moments
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {message.video.moments.map((moment, momentIndex) => (
-                <button
-                  key={`${moment.timestamp_seconds}-${momentIndex}`}
-                  type="button"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent(YOUTUBE_SEEK_EVENT, {
-                        detail: {
-                          videoId: message.video.video_id,
-                          seconds: moment.timestamp_seconds,
-                        },
-                      })
-                    )
-                  }
-                  title={moment.observation}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-left text-xs text-secondary transition-colors hover:text-primary"
-                  style={{ borderColor: `${msgAccent}35` }}
-                >
-                  <span className="font-mono" style={{ color: msgAccent }}>
-                    {moment.timestamp ||
-                      formatTimestamp(moment.timestamp_seconds)}
-                  </span>
-                  <span>{moment.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {!isUser && message.video?.fact_checks?.length > 0 && (
-          <FactCheckPanel
-            factChecks={message.video.fact_checks}
+        {!isUser && message.video?.timeline?.length > 0 && (
+          <VideoTimeline
+            timeline={message.video.timeline}
             videoId={message.video.video_id}
+            accent={msgAccent}
             credibility={message.video.credibility}
           />
         )}

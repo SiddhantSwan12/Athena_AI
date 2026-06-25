@@ -31,6 +31,7 @@ from services.vision import VisionAnalysisError, analyze_image
 from services.youtube import (
     YouTubeAnalysisError,
     analyze_youtube_video,
+    build_video_timeline,
     parse_youtube_url,
 )
 
@@ -461,6 +462,10 @@ async def _youtube_events(
         fact_checks,
         len(analysis.get("claims", [])),
     )
+    timeline = build_video_timeline(
+        analysis.get("moments", []),
+        fact_checks,
+    )
 
     sources = format_rag_sources(chunks)
     web_sources = format_web_sources(web_results)
@@ -474,6 +479,7 @@ async def _youtube_events(
         "claims": analysis.get("claims", []),
         "fact_checks": fact_checks,
         "credibility": credibility,
+        "timeline": timeline,
     }
     yield _sse(
         "meta",

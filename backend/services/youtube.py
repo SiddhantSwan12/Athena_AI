@@ -171,3 +171,55 @@ async def analyze_youtube_video(url: str, query: str) -> dict:
     if not settings.GEMINI_API_KEY:
         raise YouTubeAnalysisError("YouTube analysis is not configured")
     return await asyncio.to_thread(_analyze_sync, url, query)
+
+
+def build_video_timeline(
+    moments: list[dict],
+    fact_checks: list[dict],
+) -> list[dict]:
+    timeline: list[dict] = []
+    for index, moment in enumerate(moments):
+        timeline.append(
+            {
+                "id": f"moment-{index}-{moment.get('timestamp_seconds', 0)}",
+                "type": "moment",
+                "timestamp": moment.get("timestamp") or "00:00",
+                "timestamp_seconds": max(
+                    0,
+                    float(moment.get("timestamp_seconds") or 0),
+                ),
+                "title": moment.get("label") or "Video moment",
+                "description": moment.get("observation") or "",
+            }
+        )
+    for index, check in enumerate(fact_checks):
+        timeline.append(
+            {
+                "id": check.get("id")
+                or f"claim-{index}-{check.get('timestamp_seconds', 0)}",
+                "type": "claim",
+                "timestamp": check.get("timestamp") or "00:00",
+                "timestamp_seconds": max(
+                    0,
+                    float(check.get("timestamp_seconds") or 0),
+                ),
+                "title": check.get("claim") or "Video claim",
+                "description": check.get("explanation") or "",
+                "verdict": check.get("verdict") or "unverified",
+                "confidence": float(check.get("confidence") or 0),
+                "evidence_quality": float(
+                    check.get("evidence_quality") or 0
+                ),
+                "independent_sources": int(
+                    check.get("independent_sources") or 0
+                ),
+                "evidence": check.get("evidence") or [],
+            }
+        )
+    timeline.sort(
+        key=lambda item: (
+            item["timestamp_seconds"],
+            0 if item["type"] == "moment" else 1,
+        )
+    )
+    return timeline
