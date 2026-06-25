@@ -12,10 +12,12 @@ export function useChat() {
   const [error, setError] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [activeVerticalFromAnswer, setActiveVerticalFromAnswer] = useState(null);
+  const [progress, setProgress] = useState(null);
 
   const sendMessage = useCallback(
     async (query, vertical, image = null, audio = null, youtube = null) => {
       setError(null);
+      setProgress({ stage: "starting", label: "Starting analysis" });
       const messageText =
         query.trim() ||
         (youtube
@@ -114,9 +116,11 @@ export function useChat() {
             conversation_id: conversationId || undefined,
           },
           {
+            onProgress: (data) => setProgress(data),
             onMeta: (data) => {
               setMessages((prev) => {
-                const withMedia = data.transcript || data.video
+                const withMedia =
+                  data.transcript || data.video || data.authenticity
                   ? prev.map((message) =>
                       message.id === userMessage.id
                         ? {
@@ -131,6 +135,9 @@ export function useChat() {
                                   }
                                 : {}),
                               ...(data.video || {}),
+                              ...(data.authenticity
+                                ? { authenticity: data.authenticity }
+                                : {}),
                             })),
                           }
                         : message
@@ -147,6 +154,8 @@ export function useChat() {
                   sources: data.sources || [],
                   web_sources: data.web_sources || [],
                   video: data.video || null,
+                  authenticity: data.authenticity || null,
+                  investigation: data.investigation || null,
                   timestamp: new Date().toISOString(),
                   isStreaming: true,
                   },
@@ -189,6 +198,10 @@ export function useChat() {
                   sources: finalData?.sources || [],
                   web_sources: finalData?.web_sources || [],
                   video: finalData?.video || m.video || null,
+                  authenticity:
+                    finalData?.authenticity || m.authenticity || null,
+                  investigation:
+                    finalData?.investigation || m.investigation || null,
                   isStreaming: false,
                 }
               : m
@@ -212,6 +225,7 @@ export function useChat() {
         return false;
       } finally {
         setIsLoading(false);
+        setProgress(null);
       }
     },
     [conversationId]
@@ -222,6 +236,7 @@ export function useChat() {
     setConversationId(null);
     setError(null);
     setActiveVerticalFromAnswer(null);
+    setProgress(null);
   }, []);
 
   const hydrate = useCallback((conversation) => {
@@ -238,6 +253,8 @@ export function useChat() {
         web_sources: m.web_sources || [],
         attachments: m.attachments || [],
         video: m.video || null,
+        authenticity: m.authenticity || null,
+        investigation: m.investigation || null,
         timestamp: m.timestamp,
       }))
     );
@@ -250,6 +267,7 @@ export function useChat() {
     error,
     conversationId,
     activeVerticalFromAnswer,
+    progress,
     sendMessage,
     reset,
     hydrate,

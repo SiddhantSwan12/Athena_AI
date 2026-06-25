@@ -114,6 +114,7 @@ export const chatApi = {
       const rawData = dataLines.map((line) => line.slice("data:".length).trim()).join("\n");
       const data = JSON.parse(rawData);
 
+      if (event === "progress") handlers.onProgress?.(data);
       if (event === "meta") handlers.onMeta?.(data);
       if (event === "token") handlers.onToken?.(data);
       if (event === "done") {
@@ -158,6 +159,10 @@ export const convosApi = {
   list: () => api.get("/api/conversations").then((r) => r.data),
   get: (id) => api.get(`/api/conversations/${id}`).then((r) => r.data),
   remove: (id) => api.delete(`/api/conversations/${id}`).then((r) => r.data),
+  listInvestigations: () =>
+    api.get("/api/conversations/investigations").then((r) => r.data),
+  getInvestigation: (id) =>
+    api.get(`/api/conversations/investigations/${id}`).then((r) => r.data),
 };
 
 export default api;

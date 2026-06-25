@@ -12,6 +12,12 @@ class FakeConversationsCollection:
         self.document = document
 
 
+def event_payload(events, event_name):
+    prefix = f"event: {event_name}\n"
+    event = next(item for item in events if item.startswith(prefix))
+    return json.loads(event.split("data: ", 1)[1])
+
+
 def test_youtube_events_include_and_persist_fact_checks(monkeypatch):
     fake_collection = FakeConversationsCollection()
     streamed_context = {}
@@ -106,8 +112,8 @@ def test_youtube_events_include_and_persist_fact_checks(monkeypatch):
         return events
 
     events = asyncio.run(collect())
-    meta = json.loads(events[0].split("data: ", 1)[1])
-    done = json.loads(events[-1].split("data: ", 1)[1])
+    meta = event_payload(events, "meta")
+    done = event_payload(events, "done")
 
     assert len(meta["video"]["fact_checks"]) == 2
     assert meta["video"]["credibility"]["label"] == "High evidence alignment"

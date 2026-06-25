@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut, MessageSquare, Upload, Library, Sun, Moon } from "lucide-react";
+import { FileSearch, LogOut, MessageSquare, Upload, Library, Sun, Moon } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useVertical } from "../../lib/VerticalContext";
 import { useTheme } from "../../lib/ThemeContext";
@@ -47,6 +47,14 @@ export default function TopBar({ onClear, showSwitcher = true, rightSlot }) {
             <NavLink to="/upload" className={linkClass} data-testid="nav-upload">
               <Upload className="w-3.5 h-3.5" />
               Upload
+            </NavLink>
+            <NavLink
+              to="/investigations"
+              className={linkClass}
+              data-testid="nav-investigations"
+            >
+              <FileSearch className="w-3.5 h-3.5" />
+              Reports
             </NavLink>
           </nav>
         )}

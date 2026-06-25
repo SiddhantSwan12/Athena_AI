@@ -5,6 +5,7 @@ google-genai==2.9.0
 openai==2.43.0
 motor==3.5.1
 numpy==1.26.4
+Pillow==12.2.0
 passlib==1.7.4
 pdfplumber==0.11.4
 pydantic==2.13.4

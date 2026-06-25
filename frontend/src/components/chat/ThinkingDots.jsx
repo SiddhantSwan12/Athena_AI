@@ -10,7 +10,7 @@ const PHASES = [
   { glyph: "◈", label: "Synthesizing answer" },
 ];
 
-export default function ThinkingDots() {
+export default function ThinkingDots({ progress }) {
   const [phaseIdx, setPhaseIdx] = useState(0);
   const [visible, setVisible] = useState(0);
 
@@ -30,7 +30,10 @@ export default function ThinkingDots() {
     }
   }, [phaseIdx, visible]);
 
-  const phase = PHASES[phaseIdx];
+  const phase = progress
+    ? { glyph: "⌬", label: progress.label || "Investigating" }
+    : PHASES[phaseIdx];
+  const renderedText = progress ? phase.label : phase.label.slice(0, visible);
 
   return (
     <motion.div
@@ -62,7 +65,7 @@ export default function ThinkingDots() {
       >
         <AnimatePresence mode="wait">
           <motion.span
-            key={phaseIdx}
+            key={progress?.stage || phaseIdx}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
@@ -75,7 +78,7 @@ export default function ThinkingDots() {
         </AnimatePresence>
 
         <span className="font-mono text-xs text-secondary tracking-wide">
-          {phase.label.slice(0, visible)}
+          {renderedText}
           <motion.span
             animate={{ opacity: [1, 0, 1] }}
             transition={{ duration: 0.65, repeat: Infinity }}

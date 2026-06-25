@@ -73,6 +73,7 @@ class ChatResponse(BaseModel):
     sources: list[SourceItem]
     web_sources: list[WebSourceItem] = []
     conversation_id: str
+    investigation: Optional[dict] = None
 
 
 # ---------- Documents ----------

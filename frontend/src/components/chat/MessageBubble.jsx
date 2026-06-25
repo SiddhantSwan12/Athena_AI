@@ -6,6 +6,8 @@ import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
 import MermaidDiagram from "./MermaidDiagram";
 import VideoTimeline from "./VideoTimeline";
+import ImageAuthenticityPanel from "./ImageAuthenticityPanel";
+import InvestigationReport from "./InvestigationReport";
 import { OwlIcon } from "../Icons";
 import { FileAudio, Youtube } from "lucide-react";
 import { YOUTUBE_SEEK_EVENT } from "../../lib/youtube";
@@ -285,6 +287,12 @@ export default function MessageBubble({ message, index }) {
             accent={msgAccent}
             credibility={message.video.credibility}
           />
+        )}
+        {!isUser && message.authenticity && (
+          <ImageAuthenticityPanel assessment={message.authenticity} />
+        )}
+        {!isUser && message.investigation && (
+          <InvestigationReport investigation={message.investigation} />
         )}
         {!isUser && !message.sources?.length && message.web_sources?.length > 0 && (
           <SourceDrawer

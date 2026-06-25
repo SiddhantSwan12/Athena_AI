@@ -28,7 +28,7 @@ const SUGGESTION_POOL = [
 
 export default function ChatPage() {
   const { vertical, setVertical, accent } = useVertical();
-  const { messages, isLoading, error, sendMessage, reset, hydrate, conversationId, activeVerticalFromAnswer } = useChat();
+  const { messages, isLoading, error, progress, sendMessage, reset, hydrate, conversationId, activeVerticalFromAnswer } = useChat();
   const [input, setInput] = useState("");
   const [image, setImage] = useState(null);
   const [audio, setAudio] = useState(null);
@@ -278,7 +278,11 @@ export default function ChatPage() {
               <MessageBubble key={m.id} message={m} index={i} />
             ))}
 
-            <AnimatePresence>{isLoading && !hasStreamingAssistant && <ThinkingDots />}</AnimatePresence>
+            <AnimatePresence>
+              {isLoading && !hasStreamingAssistant && (
+                <ThinkingDots progress={progress} />
+              )}
+            </AnimatePresence>
             <div ref={bottomRef} />
           </div>
         </div>

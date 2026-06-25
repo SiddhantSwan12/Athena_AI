@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -24,6 +25,25 @@ from services.generator import (
     generate_answer,
     stream_answer_text,
 )
+from services.image_authenticity import (
+    ImageAuthenticityError,
+    assess_authenticity_from_observation,
+    assess_image_authenticity,
+    extract_image_metadata,
+    format_authenticity_context,
+    inconclusive_assessment,
+    selected_source_results,
+)
+from services.investigation import (
+    build_investigation,
+    detect_investigation_intent,
+    format_investigation_context,
+    investigate_claims,
+)
+from services.request_limits import (
+    InvestigationRateLimitError,
+    enforce_investigation_rate,
+)
 from services.retriever import retrieve_chunks
 from services.speech import SpeechTranscriptionError, transcribe_audio
 from services.web_search import web_search
@@ -36,11 +56,19 @@ from services.youtube import (
 )
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+logger = logging.getLogger(__name__)
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_AUDIO_BYTES = 4 * 1024 * 1024
 _HISTORY_LIMIT = 20  # last N messages (~10 turns) sent to Claude
 _VISUAL_CONTEXT_HISTORY_LIMIT = 3000
 _AUDIO_CONTEXT_HISTORY_LIMIT = 6000
+
+
+def _enforce_investigation_limit(user_id: str) -> None:
+    try:
+        enforce_investigation_rate(user_id)
+    except InvestigationRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
 
 
 async def _load_history(conversation_id: str | None, user_id: str) -> list[dict]:
@@ -251,6 +279,7 @@ async def _image_events(
     *,
     query: str,
     visual_context: str,
+    image_bytes: bytes,
     image_name: str,
     image_type: str,
     vertical: str | None,
@@ -258,18 +287,83 @@ async def _image_events(
     current_user: dict,
     history: list[dict],
 ):
-    evidence_query = f"{query}\nImage context: {visual_context[:700]}"
+    yield _sse(
+        "progress",
+        {"stage": "observing", "label": "Reading image details"},
+    )
+    evidence_query = f"{query}\nImage context: {visual_context[:900]}"
+    search_query = (
+        f"{query[:160]} Image description: {visual_context[:210]}"
+    ).strip()
     classified = await classify_vertical(evidence_query)
     active = vertical or classified
     chunks, web_results = await asyncio.gather(
         retrieve_chunks(evidence_query, active),
-        web_search(query, active)
-        if query != "Analyze this image."
-        else asyncio.sleep(0, result=[]),
+        web_search(search_query, active, max_results=5),
     )
+    metadata = extract_image_metadata(image_bytes, image_type)
+    yield _sse(
+        "progress",
+        {"stage": "authenticity", "label": "Checking image signals"},
+    )
+    try:
+        authenticity = await assess_image_authenticity(
+            image_bytes,
+            image_type,
+            metadata,
+            web_results,
+        )
+    except ImageAuthenticityError as exc:
+        logger.warning(
+            "Direct image authenticity screening failed, using observation "
+            "fallback: %s",
+            exc,
+        )
+        try:
+            authenticity = await assess_authenticity_from_observation(
+                visual_context,
+                metadata,
+                web_results,
+            )
+        except ImageAuthenticityError as fallback_exc:
+            logger.warning(
+                "Image authenticity fallback failed: %s",
+                fallback_exc,
+            )
+            authenticity = inconclusive_assessment(
+                metadata,
+                str(fallback_exc),
+            )
+    authenticity_context = format_authenticity_context(authenticity)
+    corroborating_web_results = selected_source_results(
+        authenticity,
+        web_results,
+    )
+    should_investigate, route_reason = detect_investigation_intent(query)
+    claim_checks = []
+    if should_investigate:
+        yield _sse(
+            "progress",
+            {"stage": "claims", "label": "Checking image claims"},
+        )
+        claim_checks = await investigate_claims(visual_context, active)
 
     sources = format_rag_sources(chunks)
-    web_sources = format_web_sources(web_results)
+    web_sources = format_web_sources(corroborating_web_results)
+    investigation = build_investigation(
+        input_type="image",
+        query=query,
+        vertical=active,
+        claims=claim_checks,
+        authenticity=authenticity,
+        sources=sources,
+        web_sources=web_sources,
+        route_reason=route_reason
+        if should_investigate
+        else "automatic image authenticity investigation",
+        limitations=authenticity.get("limitations", []),
+    )
+    investigation_context = format_investigation_context(investigation)
     yield _sse(
         "meta",
         {
@@ -277,6 +371,8 @@ async def _image_events(
             "classified_vertical": classified,
             "sources": sources,
             "web_sources": web_sources,
+            "authenticity": authenticity,
+            "investigation": investigation,
         },
     )
 
@@ -285,8 +381,10 @@ async def _image_events(
         query,
         chunks,
         active,
-        web_results,
+        corroborating_web_results,
         visual_context=visual_context,
+        authenticity_context=authenticity_context,
+        investigation_context=investigation_context,
         history=history,
     ):
         answer_parts.append(text)
@@ -298,6 +396,7 @@ async def _image_events(
         "name": image_name,
         "mime_type": image_type,
         "visual_context": visual_context,
+        "authenticity": authenticity,
     }
     convo_id = await _save_conversation(
         current_user=current_user,
@@ -309,6 +408,10 @@ async def _image_events(
         web_sources=web_sources,
         conversation_id=conversation_id,
         attachment=attachment,
+        assistant_metadata={
+            "authenticity": authenticity,
+            "investigation": investigation,
+        },
     )
     yield _sse(
         "done",
@@ -319,6 +422,8 @@ async def _image_events(
             "sources": sources,
             "web_sources": web_sources,
             "conversation_id": convo_id,
+            "authenticity": authenticity,
+            "investigation": investigation,
         },
     )
 
@@ -336,6 +441,10 @@ async def _audio_events(
     current_user: dict,
     history: list[dict],
 ):
+    yield _sse(
+        "progress",
+        {"stage": "transcript", "label": "Reviewing transcript"},
+    )
     evidence_query = f"{query}\nAudio transcript: {transcript[:1800]}"
     classified = await classify_vertical(evidence_query)
     active = vertical or classified
@@ -348,6 +457,26 @@ async def _audio_events(
 
     sources = format_rag_sources(chunks)
     web_sources = format_web_sources(web_results)
+    should_investigate, route_reason = detect_investigation_intent(query)
+    claim_checks = []
+    investigation = None
+    investigation_context = None
+    if should_investigate:
+        yield _sse(
+            "progress",
+            {"stage": "claims", "label": "Checking spoken claims"},
+        )
+        claim_checks = await investigate_claims(transcript, active)
+        investigation = build_investigation(
+            input_type="audio",
+            query=query,
+            vertical=active,
+            claims=claim_checks,
+            sources=sources,
+            web_sources=web_sources,
+            route_reason=route_reason,
+        )
+        investigation_context = format_investigation_context(investigation)
     yield _sse(
         "meta",
         {
@@ -358,6 +487,7 @@ async def _audio_events(
             "transcript": transcript,
             "language_code": language_code,
             "duration_seconds": duration_seconds,
+            "investigation": investigation,
         },
     )
 
@@ -368,6 +498,7 @@ async def _audio_events(
         active,
         web_results,
         audio_context=transcript,
+        investigation_context=investigation_context,
         history=history,
     ):
         answer_parts.append(text)
@@ -392,6 +523,9 @@ async def _audio_events(
         web_sources=web_sources,
         conversation_id=conversation_id,
         attachment=attachment,
+        assistant_metadata=(
+            {"investigation": investigation} if investigation else None
+        ),
     )
     yield _sse(
         "done",
@@ -405,6 +539,7 @@ async def _audio_events(
             "transcript": transcript,
             "language_code": language_code,
             "duration_seconds": duration_seconds,
+            "investigation": investigation,
         },
     )
 
@@ -462,6 +597,10 @@ async def _youtube_events(
     current_user: dict,
     history: list[dict],
 ):
+    yield _sse(
+        "progress",
+        {"stage": "claims", "label": "Verifying video claims"},
+    )
     preliminary_context = _format_video_context(analysis)
     evidence_query = f"{query}\nYouTube video analysis: {preliminary_context[:2200]}"
     classified = await classify_vertical(evidence_query)
@@ -501,6 +640,20 @@ async def _youtube_events(
         "credibility": credibility,
         "timeline": timeline,
     }
+    investigation = build_investigation(
+        input_type="youtube",
+        query=query,
+        vertical=active,
+        claims=fact_checks,
+        timeline=timeline,
+        sources=sources,
+        web_sources=web_sources,
+        route_reason="automatic YouTube investigation",
+        limitations=[
+            "Video observations describe what was seen or heard; claim verdicts "
+            "depend on the available external evidence."
+        ],
+    )
     yield _sse(
         "meta",
         {
@@ -509,6 +662,7 @@ async def _youtube_events(
             "sources": sources,
             "web_sources": web_sources,
             "video": video_meta,
+            "investigation": investigation,
         },
     )
 
@@ -519,6 +673,7 @@ async def _youtube_events(
         active,
         web_results,
         video_context=video_context,
+        investigation_context=format_investigation_context(investigation),
         history=history,
     ):
         answer_parts.append(text)
@@ -540,7 +695,10 @@ async def _youtube_events(
         web_sources=web_sources,
         conversation_id=conversation_id,
         attachment=attachment,
-        assistant_metadata={"video": video_meta},
+        assistant_metadata={
+            "video": video_meta,
+            "investigation": investigation,
+        },
     )
     yield _sse(
         "done",
@@ -552,6 +710,7 @@ async def _youtube_events(
             "web_sources": web_sources,
             "conversation_id": convo_id,
             "video": video_meta,
+            "investigation": investigation,
         },
     )
 
@@ -561,6 +720,9 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
 
+    should_investigate, route_reason = detect_investigation_intent(req.query)
+    if should_investigate:
+        _enforce_investigation_limit(current_user["id"])
     history = await _load_history(req.conversation_id, current_user["id"])
     classified = await classify_vertical(req.query)
     active = req.vertical or classified
@@ -570,12 +732,37 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         retrieve_chunks(req.query, active),
         web_search(req.query, active),
     )
+    claim_checks = (
+        await investigate_claims(req.query, active)
+        if should_investigate
+        else []
+    )
+    formatted_sources = format_rag_sources(chunks)
+    formatted_web_sources = format_web_sources(web_results)
+    investigation = (
+        build_investigation(
+            input_type="text",
+            query=req.query,
+            vertical=active,
+            claims=claim_checks,
+            sources=formatted_sources,
+            web_sources=formatted_web_sources,
+            route_reason=route_reason,
+        )
+        if should_investigate
+        else None
+    )
 
     result = await generate_answer(
         req.query,
         chunks,
         active,
         web_results,
+        investigation_context=(
+            format_investigation_context(investigation)
+            if investigation
+            else None
+        ),
         history=history,
     )
 
@@ -588,6 +775,9 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         sources=result["sources"],
         web_sources=result["web_sources"],
         conversation_id=req.conversation_id,
+        assistant_metadata=(
+            {"investigation": investigation} if investigation else None
+        ),
     )
 
     return ChatResponse(
@@ -597,6 +787,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         sources=[SourceItem(**s) for s in result["sources"]],
         web_sources=[WebSourceItem(**s) for s in result["web_sources"]],
         conversation_id=convo_id,
+        investigation=investigation,
     )
 
 
@@ -604,6 +795,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
 async def chat_stream(req: ChatRequest, current_user: dict = Depends(get_current_user)):
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
+    if detect_investigation_intent(req.query)[0]:
+        _enforce_investigation_limit(current_user["id"])
 
     async def events():
         history = await _load_history(req.conversation_id, current_user["id"])
@@ -616,6 +809,23 @@ async def chat_stream(req: ChatRequest, current_user: dict = Depends(get_current
 
         sources = format_rag_sources(chunks)
         web_sources = format_web_sources(web_results)
+        should_investigate, route_reason = detect_investigation_intent(req.query)
+        investigation = None
+        if should_investigate:
+            yield _sse(
+                "progress",
+                {"stage": "claims", "label": "Checking factual claims"},
+            )
+            claim_checks = await investigate_claims(req.query, active)
+            investigation = build_investigation(
+                input_type="text",
+                query=req.query,
+                vertical=active,
+                claims=claim_checks,
+                sources=sources,
+                web_sources=web_sources,
+                route_reason=route_reason,
+            )
         yield _sse(
             "meta",
             {
@@ -623,11 +833,23 @@ async def chat_stream(req: ChatRequest, current_user: dict = Depends(get_current
                 "classified_vertical": classified,
                 "sources": sources,
                 "web_sources": web_sources,
+                "investigation": investigation,
             },
         )
 
         answer_parts: list[str] = []
-        async for text in stream_answer_text(req.query, chunks, active, web_results, history=history):
+        async for text in stream_answer_text(
+            req.query,
+            chunks,
+            active,
+            web_results,
+            investigation_context=(
+                format_investigation_context(investigation)
+                if investigation
+                else None
+            ),
+            history=history,
+        ):
             answer_parts.append(text)
             yield _sse("token", {"text": text})
 
@@ -641,6 +863,9 @@ async def chat_stream(req: ChatRequest, current_user: dict = Depends(get_current
             sources=sources,
             web_sources=web_sources,
             conversation_id=req.conversation_id,
+            assistant_metadata=(
+                {"investigation": investigation} if investigation else None
+            ),
         )
         yield _sse(
             "done",
@@ -651,6 +876,7 @@ async def chat_stream(req: ChatRequest, current_user: dict = Depends(get_current
                 "sources": sources,
                 "web_sources": web_sources,
                 "conversation_id": convo_id,
+                "investigation": investigation,
             },
         )
 
@@ -665,6 +891,7 @@ async def chat_stream_image(
     image: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _enforce_investigation_limit(current_user["id"])
     clean_query = query.strip() or "Analyze this image."
     if len(clean_query) > 4000:
         raise HTTPException(status_code=400, detail="Query is too long")
@@ -702,6 +929,7 @@ async def chat_stream_image(
         _image_events(
             query=clean_query,
             visual_context=visual_context,
+            image_bytes=image_bytes,
             image_name=(image.filename or "image")[:200],
             image_type=image_type,
             vertical=vertical,
@@ -722,6 +950,8 @@ async def chat_stream_audio(
     current_user: dict = Depends(get_current_user),
 ):
     clean_query = query.strip() or "Analyze this audio recording."
+    if detect_investigation_intent(clean_query)[0]:
+        _enforce_investigation_limit(current_user["id"])
     if len(clean_query) > 4000:
         raise HTTPException(status_code=400, detail="Query is too long")
 
@@ -780,6 +1010,7 @@ async def chat_stream_youtube(
     req: YouTubeChatRequest,
     current_user: dict = Depends(get_current_user),
 ):
+    _enforce_investigation_limit(current_user["id"])
     clean_query = req.query.strip() or "Analyze this YouTube video."
     try:
         youtube = parse_youtube_url(req.youtube_url)

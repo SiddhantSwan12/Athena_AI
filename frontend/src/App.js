@@ -6,6 +6,7 @@ import AuthPage from "./pages/AuthPage";
 import ChatPage from "./pages/ChatPage";
 import UploadPage from "./pages/UploadPage";
 import LibraryPage from "./pages/LibraryPage";
+import InvestigationsPage from "./pages/InvestigationsPage";
 import { useAuth } from "./hooks/useAuth";
 
 function RequireAuth({ children }) {
@@ -31,6 +32,8 @@ export default function App() {
       <Route path="/chat" element={<RequireAuth><ChatPage /></RequireAuth>} />
       <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
       <Route path="/library" element={<RequireAuth><LibraryPage /></RequireAuth>} />
+      <Route path="/investigations" element={<RequireAuth><InvestigationsPage /></RequireAuth>} />
+      <Route path="/investigations/:investigationId" element={<RequireAuth><InvestigationsPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
