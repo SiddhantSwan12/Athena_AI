@@ -14,6 +14,7 @@ class FakeConversationsCollection:
 
 def test_youtube_events_include_and_persist_fact_checks(monkeypatch):
     fake_collection = FakeConversationsCollection()
+    streamed_context = {}
 
     async def fake_classify(_query):
         return "technology"
@@ -35,7 +36,12 @@ def test_youtube_events_include_and_persist_fact_checks(monkeypatch):
                 "confidence": 0.9,
                 "explanation": "Official evidence reports the same value.",
                 "evidence_ids": ["web-1"],
-                "evidence": [],
+                "evidence": [
+                    {
+                        "title": "Official announcement",
+                        "url": "https://example.com/official",
+                    }
+                ],
                 "evidence_quality": 0.9,
                 "independent_sources": 1,
             },
@@ -54,7 +60,8 @@ def test_youtube_events_include_and_persist_fact_checks(monkeypatch):
             },
         ]
 
-    async def fake_stream(*_args, **_kwargs):
+    async def fake_stream(*_args, **kwargs):
+        streamed_context["video_context"] = kwargs["video_context"]
         yield "Verified answer."
 
     monkeypatch.setattr(chat, "conversations_col", fake_collection)
@@ -105,5 +112,9 @@ def test_youtube_events_include_and_persist_fact_checks(monkeypatch):
     assert len(meta["video"]["fact_checks"]) == 2
     assert meta["video"]["credibility"]["label"] == "High evidence alignment"
     assert done["video"]["credibility"]["alignment_score"] == 100
+    assert "UNVERIFIED VIDEO OBSERVATIONS" in streamed_context["video_context"]
+    assert "VERIFIED VIDEO CLAIMS" in streamed_context["video_context"]
+    assert "SUPPORTED (90% confidence)" in streamed_context["video_context"]
+    assert "https://example.com/official" in streamed_context["video_context"]
     assistant = fake_collection.document["messages"][1]
     assert assistant["video"]["fact_checks"][0]["verdict"] == "supported"

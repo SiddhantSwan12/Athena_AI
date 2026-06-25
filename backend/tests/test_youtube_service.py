@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -72,6 +73,10 @@ def test_analyze_youtube_video_returns_structured_moments():
         "type": "video",
         "uri": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     }
+    prompt = request["input"][1]["text"]
+    assert f"Current date: {date.today().isoformat()}" in prompt
+    assert "Do not decide from prior knowledge" in prompt
+    assert "Do not label the overall video as fake" in prompt
 
 
 def test_build_video_timeline_orders_moments_and_claims():

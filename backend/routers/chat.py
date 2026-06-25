@@ -413,7 +413,12 @@ def _format_video_context(
     analysis: dict,
     fact_checks: list[dict] | None = None,
 ) -> str:
-    lines = [f"Overview: {analysis['overview']}"]
+    lines = [
+        "UNVERIFIED VIDEO OBSERVATIONS",
+        "The following content describes what the video says or shows. It is "
+        "not independent evidence of real-world truth.",
+        f"Overview: {analysis['overview']}",
+    ]
     for moment in analysis.get("moments", []):
         timestamp = moment.get("timestamp") or "00:00"
         lines.append(
@@ -423,12 +428,27 @@ def _format_video_context(
     for claim in analysis.get("claims", []):
         timestamp = claim.get("timestamp") or "00:00"
         lines.append(f"[Claim at {timestamp}] {claim.get('claim', '')}")
+    if fact_checks:
+        lines.extend(
+            [
+                "",
+                "VERIFIED VIDEO CLAIMS",
+                "These evidence-backed verdicts override conflicting statements "
+                "in the unverified observations above.",
+            ]
+        )
     for check in fact_checks or []:
         lines.append(
             f"[Fact-check at {check['timestamp']}] "
             f"{check['verdict'].upper()} ({check['confidence']:.0%} confidence): "
-            f"{check['explanation']}"
+            f"Claim: {check.get('claim', '')}\n"
+            f"Explanation: {check['explanation']}"
         )
+        for evidence in check.get("evidence", []):
+            lines.append(
+                f"  [Verified evidence] {evidence.get('title', 'Source')} — "
+                f"{evidence.get('url') or evidence.get('quality_label', 'source')}"
+            )
     return "\n".join(lines)
 
 
