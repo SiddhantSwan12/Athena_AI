@@ -5,11 +5,12 @@ import remarkGfm from "remark-gfm";
 import { useVertical, ACCENT_MAP, labelFor } from "../../lib/VerticalContext";
 import SourceDrawer from "./SourceDrawer";
 import MermaidDiagram from "./MermaidDiagram";
+import FactCheckPanel from "./FactCheckPanel";
 import { OwlIcon } from "../Icons";
 import { Clock3, FileAudio, Youtube } from "lucide-react";
+import { YOUTUBE_SEEK_EVENT } from "../../lib/youtube";
 
 const remarkPlugins = [remarkGfm];
-const YOUTUBE_SEEK_EVENT = "athena:youtube-seek";
 
 function formatTimestamp(seconds) {
   const total = Math.max(0, Math.floor(seconds || 0));
@@ -307,6 +308,13 @@ export default function MessageBubble({ message, index }) {
               ))}
             </div>
           </div>
+        )}
+        {!isUser && message.video?.fact_checks?.length > 0 && (
+          <FactCheckPanel
+            factChecks={message.video.fact_checks}
+            videoId={message.video.video_id}
+            credibility={message.video.credibility}
+          />
         )}
         {!isUser && !message.sources?.length && message.web_sources?.length > 0 && (
           <SourceDrawer

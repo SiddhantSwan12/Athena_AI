@@ -17,6 +17,7 @@ from models.schemas import (
 )
 from services.auth_service import get_current_user
 from services.classifier import classify_vertical
+from services.fact_check import summarize_video_credibility, verify_claims
 from services.generator import (
     format_rag_sources,
     format_web_sources,
@@ -407,7 +408,10 @@ async def _audio_events(
     )
 
 
-def _format_video_context(analysis: dict) -> str:
+def _format_video_context(
+    analysis: dict,
+    fact_checks: list[dict] | None = None,
+) -> str:
     lines = [f"Overview: {analysis['overview']}"]
     for moment in analysis.get("moments", []):
         timestamp = moment.get("timestamp") or "00:00"
@@ -418,6 +422,12 @@ def _format_video_context(analysis: dict) -> str:
     for claim in analysis.get("claims", []):
         timestamp = claim.get("timestamp") or "00:00"
         lines.append(f"[Claim at {timestamp}] {claim.get('claim', '')}")
+    for check in fact_checks or []:
+        lines.append(
+            f"[Fact-check at {check['timestamp']}] "
+            f"{check['verdict'].upper()} ({check['confidence']:.0%} confidence): "
+            f"{check['explanation']}"
+        )
     return "\n".join(lines)
 
 
@@ -431,19 +441,25 @@ async def _youtube_events(
     current_user: dict,
     history: list[dict],
 ):
-    video_context = _format_video_context(analysis)
-    evidence_query = f"{query}\nYouTube video analysis: {video_context[:2200]}"
+    preliminary_context = _format_video_context(analysis)
+    evidence_query = f"{query}\nYouTube video analysis: {preliminary_context[:2200]}"
     classified = await classify_vertical(evidence_query)
     active = vertical or classified
     generic_queries = {
         "Analyze this YouTube video.",
         "Summarize this YouTube video.",
     }
-    chunks, web_results = await asyncio.gather(
+    chunks, web_results, fact_checks = await asyncio.gather(
         retrieve_chunks(evidence_query, active),
         web_search(query, active)
         if query not in generic_queries
         else asyncio.sleep(0, result=[]),
+        verify_claims(analysis.get("claims", []), active),
+    )
+    video_context = _format_video_context(analysis, fact_checks)
+    credibility = summarize_video_credibility(
+        fact_checks,
+        len(analysis.get("claims", [])),
     )
 
     sources = format_rag_sources(chunks)
@@ -456,6 +472,8 @@ async def _youtube_events(
         "language": analysis.get("language", "unknown"),
         "moments": analysis.get("moments", []),
         "claims": analysis.get("claims", []),
+        "fact_checks": fact_checks,
+        "credibility": credibility,
     }
     yield _sse(
         "meta",

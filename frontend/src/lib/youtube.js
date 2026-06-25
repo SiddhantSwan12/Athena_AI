@@ -1,4 +1,5 @@
 const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+export const YOUTUBE_SEEK_EVENT = "athena:youtube-seek";
 
 export function normalizeYouTubeUrl(value) {
   const candidate = value.trim();
